@@ -33,13 +33,14 @@ class EnvNode : public rclcpp::Node {
     public:
         EnvNode() : Node("env_node")
         {
-            vehicle_command_publisher_ = this->create_publisher<VehicleCommand>("fmu/vehicle_command/in", 2);
-            offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("fmu/offboard_control_mode/in", 2);
-            vehicle_land_detected = this->create_subscription<VehicleOdometry>("fmu/vehicle_odometry/out", 2, std::bind(&EnvNode::vehicle_land_detected_callback, this, _1));
-            trajectory_setpoint_publisher_ = this->create_publisher<TrajectorySetpoint>("fmu/trajectory_setpoint/in", 2);
-            agent_subscriber = this->create_subscription<Float32MultiArray>("/agent/velocity", 2, std::bind(&EnvNode::agent_callback, this, _1));
-            agent_reward_publisher = this->create_subscription<Float32MultiArray>("/agent/reward", 2);
-            play_reset_subscriber = this->create_subscription<Float32MultiArray>("/env/play_reset", 2, std::bind(&EnvNode::play_reset_callback, this, _1));
+            vehicle_command_publisher_ = this->create_publisher<VehicleCommand>("fmu/vehicle_command/in", 1);
+            offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("fmu/offboard_control_mode/in", 1);
+            odometry = this->create_subscription<VehicleOdometry>("fmu/vehicle_odometry/out", 1, std::bind(&EnvNode::odometry_callback, this, _1));
+            trajectory_setpoint_publisher_ = this->create_publisher<TrajectorySetpoint>("fmu/trajectory_setpoint/in", 1);
+            agent_action_received_publisher_ = this->create_publisher<TrajectorySetpoint>("/agent/action_received", 1);
+            agent_subscriber = this->create_subscription<Float32MultiArray>("/agent/velocity", 1, std::bind(&EnvNode::agent_callback, this, _1));
+            play_reset_subscriber = this->create_subscription<Float32MultiArray>("/env/play_reset", 1, std::bind(&EnvNode::play_reset_callback, this, _1));
+            play_reset_publisher = this->create_publisher<Float32MultiArray>("/env/play_reset", 1);
 
             timesync_sub_ = this->create_subscription<Timesync>(
                 "fmu/timesync/out", 1,
@@ -51,7 +52,6 @@ class EnvNode : public rclcpp::Node {
             this->cont_my = 0;
             auto timer_callback = [this]() -> void {
 
-               RCLCPP_INFO(this->get_logger(), "cont: %d", this->cont_my);
 		        if(this->cont_my < 50 && this->play==1) {
                     this->land();
                 }
@@ -70,11 +70,12 @@ class EnvNode : public rclcpp::Node {
         rclcpp::TimerBase::SharedPtr timer_;
         rclcpp::Publisher<VehicleCommand>::SharedPtr vehicle_command_publisher_;
         rclcpp::Subscription<Timesync>::SharedPtr timesync_sub_;
-        rclcpp::Subscription<VehicleOdometry>::SharedPtr vehicle_land_detected;
+        rclcpp::Subscription<VehicleOdometry>::SharedPtr odometry_callback;
         rclcpp::Subscription<Float32MultiArray>::SharedPtr agent_subscriber;
         rclcpp::Publisher<OffboardControlMode>::SharedPtr offboard_control_mode_publisher_;
         rclcpp::Publisher<TrajectorySetpoint>::SharedPtr trajectory_setpoint_publisher_;
-            
+        rclcpp::Publisher<Float32MultiArray>::SharedPtr play_reset_publisher;
+        rclcpp::Subscription<Float32MultiArray>::SharedPtr play_reset_subscriber;
 
         std::atomic<uint64_t> timestamp_;
         std::random_device rd;  // Will be used to obtain a seed for the random number engine
@@ -98,7 +99,7 @@ class EnvNode : public rclcpp::Node {
         void takeoff(float x, float y, float z) const;
         void agent_callback(const Float32MultiArray::SharedPtr msg_float);
         void play_reset_callback(const Float32MultiArray::SharedPtr msg_float);
-        void vehicle_land_detected_callback(const VehicleOdometry::SharedPtr msg);
+        void odometry_callback(const VehicleOdometry::SharedPtr msg);
         void publish_offboard_control_mode(bool pos, bool vel, bool acc, bool att, bool br) const;
 };
 
@@ -130,11 +131,14 @@ void EnvNode::play_reset_callback(const Float32MultiArray::SharedPtr msg_float)
     this->reset = msg_float->data[1];  // if 1 perform takeoff, 0 takeoff complete
 }
 
-// Receive land detected
-void EnvNode::vehicle_land_detected_callback(const VehicleOdometry::SharedPtr msg)
+// Check successful takeoff
+void EnvNode::odometry_callback(const VehicleOdometry::SharedPtr msg)
 {
-    if(std::abs(msg->z) <= eps_pos && std::abs(msg->vz) <= eps_vel && std::abs(msg->vx) <= eps_vel) {
-        this->cont_my += 1;
+    if(std::abs(this->x-msg->x) <= this->eps_pos &&
+       std::abs(this->y-msg->y) <= this->eps_pos && std::abs(this->z-msg->z) <= this->eps_pos){
+         this->play_reset_publisher->publish()  // PUBLISH PLAY 1 AND RESET 0
+         this->play=1;
+         this->reset=0;
     }
 }
 
