@@ -46,7 +46,7 @@ RUN pip3 install --upgrade \
 		pytest-repeat \
 		pytest-rerunfailures
 		
-RUN pip3 install pandas
+RUN pip3 install pandas scikit-build
 
 # bootstrap rosdep
 RUN rosdep update

@@ -6,10 +6,12 @@ Deep NN trained with physics-informed reinforcement learning for drone precision
 2. [Usage](#usage)
     1. [Train](#train)
     2. [Test](#test)
+3. [References](#references)
 
 ## Setup <a name="setup"></a>
 Clone [PX4-AutoPilot](https://github.com/PX4/PX4-Autopilot) in the "shared" folder.
 ```
+cd shared
 git clone https://github.com/PX4/PX4-Autopilot.git
 ```
 
@@ -43,3 +45,6 @@ make px4_sitl_rtps gazebo
 ### Train <a name="train"></a>
 
 ### Test <a name="test"></a>
+
+## References <a name="references"></a>
+The code for the PPO algoritm and the memory has been taken from [this](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail) github repository.
