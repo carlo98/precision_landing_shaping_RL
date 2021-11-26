@@ -16,3 +16,4 @@ num-processes: 8
 use_gae: True
 gae_lambda: 0.95
 seed: 5
+max_memory_len: 5000

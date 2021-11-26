@@ -45,6 +45,30 @@ make px4_sitl_rtps gazebo
 ### Train <a name="train"></a>
 
 ### Test <a name="test"></a>
+Open a terminal and divide it with "tmux" in 5 command lines or open 5 terminals and run the docker in each one of them, as explained above.
+
+Once gazebo is started, in a new terminal run 
+```
+micrortps_agent -t UDP
+```
+
+#### Baseline
+Then takeoff with:
+```
+ros2 run px4_ros_extended takeoff
+```
+
+Once the drone is stable run in two different windows:
+```
+ros2 run px4_ros_extended baseline_prec_land
+ros2 run px4_ros_extended land
+```
+
+Once the first messages appear in the window in which you have runned the land node, stop the takeoff node with "ctrl-c."
+
+#### DDPG
 
 ## References <a name="references"></a>
 The code for the PPO algoritm and the memory has been taken from [this](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail) github repository.
+
+The code for the DDPG algorithm has been taken from [this](https://github.com/vy007vikas/PyTorch-ActorCriticRL) github repository.
