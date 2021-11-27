@@ -3,8 +3,8 @@ import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 
-import utils
-from model import Critic, Actor
+import DDPG.utils as utils
+from DDPG.model import Critic, Actor
 
 BATCH_SIZE = 128
 LEARNING_RATE = 0.001
@@ -28,12 +28,12 @@ class DDPG:
         self.iter = 0
         self.noise = utils.OrnsteinUhlenbeckActionNoise(self.action_dim)
 
-        self.actor = Actor(self.state_dim, self.action_dim, self.action_lim)
-        self.target_actor = Actor(self.state_dim, self.action_dim, self.action_lim)
+        self.actor = Actor(self.state_dim, self.action_dim, self.action_lim).float()
+        self.target_actor = Actor(self.state_dim, self.action_dim, self.action_lim).float()
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),LEARNING_RATE)
 
-        self.critic = Critic(self.state_dim, self.action_dim)
-        self.target_critic = Critic(self.state_dim, self.action_dim)
+        self.critic = Critic(self.state_dim, self.action_dim).float()
+        self.target_critic = Critic(self.state_dim, self.action_dim).float()
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),LEARNING_RATE)
 
         utils.hard_update(self.target_actor, self.actor)
@@ -45,7 +45,7 @@ class DDPG:
         :param state: state (Numpy array)
         :return: sampled action (Numpy array)
         """
-        state = Variable(torch.from_numpy(state))
+        state = Variable(torch.from_numpy(state).float())
         action = self.target_actor.forward(state).detach()
         return action.data.numpy()
 
@@ -55,7 +55,7 @@ class DDPG:
         :param state: state (Numpy array)
         :return: sampled action (Numpy array)
         """
-        state = Variable(torch.from_numpy(state))
+        state = Variable(torch.from_numpy(state).float())
         action = self.actor.forward(state).detach()
         new_action = action.data.numpy() + (self.noise.sample() * self.action_lim)
         return new_action

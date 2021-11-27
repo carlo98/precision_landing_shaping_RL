@@ -11,7 +11,7 @@
 
   <depend>rclcpp</depend>
   <depend>rclpy</depend>
-  <depend>std_srvs</depend>
+  <depend>std_msgs</depend>
   <depend>custom_msgs</depend>
   <depend>px4_msgs</depend>
 

@@ -2,14 +2,15 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <chrono>
-#include <random>
 #include <math.h>
+#include <ctime>
 
 /* custom message */
 #include "custom_msgs/msg/float32_multi_array.hpp"
 
 /* ROS2 libs */
 #include <rclcpp/rclcpp.hpp>
+#include <std_msgs/msg/int64.hpp>
 
 /* PX4 libs */
 #include <px4_msgs/msg/timesync.hpp>
@@ -23,6 +24,7 @@
 using namespace std;
 using namespace std::chrono;
 using namespace std::chrono_literals;
+using namespace std_msgs::msg;
 using namespace px4_msgs::msg;
 using namespace custom_msgs::msg;
 using std::placeholders::_1;
@@ -33,14 +35,16 @@ class EnvNode : public rclcpp::Node {
     public:
         EnvNode() : Node("env_node")
         {
-            vehicle_command_publisher_ = this->create_publisher<VehicleCommand>("fmu/vehicle_command/in", 1);
-            offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("fmu/offboard_control_mode/in", 1);
-            odometry = this->create_subscription<VehicleOdometry>("fmu/vehicle_odometry/out", 1, std::bind(&EnvNode::odometry_callback, this, _1));
-            trajectory_setpoint_publisher_ = this->create_publisher<TrajectorySetpoint>("fmu/trajectory_setpoint/in", 1);
-            agent_action_received_publisher_ = this->create_publisher<TrajectorySetpoint>("/agent/action_received", 1);
+            vehicle_command_publisher_ = this->create_publisher<VehicleCommand>("fmu/vehicle_command/in", 2);
+            offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("fmu/offboard_control_mode/in", 2);
+            odometry_subscriber = this->create_subscription<VehicleOdometry>("fmu/vehicle_odometry/out", 1, std::bind(&EnvNode::odometry_callback, this, _1));
+            trajectory_setpoint_publisher_ = this->create_publisher<TrajectorySetpoint>("fmu/trajectory_setpoint/in", 2);
+            agent_action_received_publisher_ = this->create_publisher<Int64>("/agent/action_received", 1);
             agent_subscriber = this->create_subscription<Float32MultiArray>("/agent/velocity", 1, std::bind(&EnvNode::agent_callback, this, _1));
             play_reset_subscriber = this->create_subscription<Float32MultiArray>("/env/play_reset", 1, std::bind(&EnvNode::play_reset_callback, this, _1));
             play_reset_publisher = this->create_publisher<Float32MultiArray>("/env/play_reset", 1);
+            
+            srand (static_cast <unsigned> (time(0)));
 
             timesync_sub_ = this->create_subscription<Timesync>(
                 "fmu/timesync/out", 1,
@@ -49,14 +53,27 @@ class EnvNode : public rclcpp::Node {
                     timestamp_.store(msg->timestamp);
                 });
 
-            this->cont_my = 0;
             auto timer_callback = [this]() -> void {
+            
+                if (this->offboard_setpoint_counter_ == 30) {
+		    // Change to Offboard mode after 30 setpoints
+		    this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
 
-		        if(this->cont_my < 50 && this->play==1) {
+		    // Arm the vehicle
+		    this->arm();
+		    usleep(1000000);
+                }
+                
+		if(this->play==1 && this->reset==0) {
                     this->land();
                 }
                 else if(this->play==0 && this->reset==1) {
                     this->takeoff(this->x, this->y, this->z);
+                }
+                
+                if(this->offboard_setpoint_counter_ <= 30) {
+                    this->takeoff(this->x, this->y, this->z);
+                    this->offboard_setpoint_counter_ += 1;
                 }
             };
 
@@ -65,33 +82,35 @@ class EnvNode : public rclcpp::Node {
 
         void disarm() const;
         void land() const;
+        void arm() const;
 
     private:
         rclcpp::TimerBase::SharedPtr timer_;
         rclcpp::Publisher<VehicleCommand>::SharedPtr vehicle_command_publisher_;
         rclcpp::Subscription<Timesync>::SharedPtr timesync_sub_;
-        rclcpp::Subscription<VehicleOdometry>::SharedPtr odometry_callback;
+        rclcpp::Subscription<VehicleOdometry>::SharedPtr odometry_subscriber;
         rclcpp::Subscription<Float32MultiArray>::SharedPtr agent_subscriber;
+        rclcpp::Publisher<Int64>::SharedPtr agent_action_received_publisher_;
         rclcpp::Publisher<OffboardControlMode>::SharedPtr offboard_control_mode_publisher_;
         rclcpp::Publisher<TrajectorySetpoint>::SharedPtr trajectory_setpoint_publisher_;
         rclcpp::Publisher<Float32MultiArray>::SharedPtr play_reset_publisher;
         rclcpp::Subscription<Float32MultiArray>::SharedPtr play_reset_subscriber;
 
         std::atomic<uint64_t> timestamp_;
-        std::random_device rd;  // Will be used to obtain a seed for the random number engine
-        std::mt19937 gen(rd()); // Standard mersenne_twister_engine seeded with rd()
-        std::uniform_real_distribution<> dis(-10.0, 10.0);
-        int cont_my = 0;
-        float eps_pos = 0.1;  // Tolerance for position
+        Int64 int64Msg = Int64();
+        Float32MultiArray float32Msg = Float32MultiArray();
+        std::vector<float> float32Vector = std::vector<float>(3);
+        int offboard_setpoint_counter_ = 0;
+        float eps_pos = 0.3;  // Tolerance for position
         float eps_vel = 0.05;  // Tolerance for velocity
         float vz = 0.0;
         float vx = 0.0;
         float vy = 0.0;
         int play = 0;  // if 1 listen to velocity from agent, 0 stop publish velocity
         int reset = 1;  // if 1 perform takeoff, 0 takeoff complete
-        float x = this->dis(this->gen);
-        float y = this->dis(this->gen);
-        float z = this->dis(this->gen);
+        float x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
+        float y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
+        float z = 1.5 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(6.0-1.5)));
 
 
         void publish_vehicle_command(uint16_t command, float param1 = 0.0, float param2 = 0.0) const;
@@ -117,38 +136,68 @@ void EnvNode::agent_callback(const Float32MultiArray::SharedPtr msg_float)
     this->vx = msg_float->data[0];
     this->vy = msg_float->data[1];
     this->vz = msg_float->data[2];
+    
+    this->int64Msg.data = 1;
+    this->agent_action_received_publisher_->publish(this->int64Msg);
 }
 
 // Receive play_reset signal from agent
 void EnvNode::play_reset_callback(const Float32MultiArray::SharedPtr msg_float)
 {
     this->play = msg_float->data[0];  // if 1 listen to velocity from agent, 0 stop publish velocity
-    if(this->reset == 0 && msg_float->data[1]==1) {
-        this->x = this->dis(this->gen);
-        this->y = this->dis(this->gen);
-        this->z = this->dis(this->gen);
+    
+    if(this->reset == 0 && msg_float->data[1]==1) {  // Restart takeoff, sample random position
+    
+        float sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        if(sign >= 0.5){
+            this->x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
+        } else {
+            this->x = - 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
+        }
+        sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+        if(sign >= 0.5){
+            this->y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
+        } else {
+            this->y = - 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
+        }
+        this->z = 1.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(5.0-1.0)));
     }
+    
     this->reset = msg_float->data[1];  // if 1 perform takeoff, 0 takeoff complete
 }
 
 // Check successful takeoff
 void EnvNode::odometry_callback(const VehicleOdometry::SharedPtr msg)
 {
-    if(std::abs(this->x-msg->x) <= this->eps_pos &&
-       std::abs(this->y-msg->y) <= this->eps_pos && std::abs(this->z-msg->z) <= this->eps_pos){
-         this->play_reset_publisher->publish()  // PUBLISH PLAY 1 AND RESET 0
-         this->play=1;
-         this->reset=0;
+    if(std::abs((std::abs(this->x)-std::abs(msg->x))) <= this->eps_pos &&
+       std::abs((std::abs(this->y)-std::abs(msg->y))) <= this->eps_pos && 
+       std::abs((std::abs(this->z)-std::abs(msg->z))) <= this->eps_pos &&
+       this->reset == 1){
+
+         this->int64Msg.data = 1;
+         this->agent_action_received_publisher_->publish(this->int64Msg);
+         
+         this->float32Vector.clear();
+         this->float32Vector.push_back(1);  // Play
+         this->float32Vector.push_back(0);  // Reset
+
+         this->float32Msg.data = this->float32Vector;
+         this->play_reset_publisher->publish(this->float32Msg);
     }
 }
 
-// Disarm
 void EnvNode::disarm() const
 {
     publish_vehicle_command(VehicleCommand::VEHICLE_CMD_NAV_LAND, 0.0);
 	publish_vehicle_command(VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM, 0.0);
 
 	RCLCPP_INFO(this->get_logger(), "Disarm command send");
+}
+
+void EnvNode::arm() const {
+	publish_vehicle_command(VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM, 1.0);
+
+	RCLCPP_INFO(this->get_logger(), "Arm command send");
 }
 
 // Control setpoint movement velocity
@@ -171,14 +220,14 @@ void EnvNode::publish_trajectory_setpoint_vel(float vx, float vy, float vz, floa
 // Control setpoint movement position
 void EnvNode::takeoff(float x, float y, float z) const {
     this->publish_offboard_control_mode(true, false, false, false, false);
-	TrajectorySetpoint msg{};
-	msg.timestamp = timestamp_.load();
-	msg.x = - x;
-	msg.y = - y;
-	msg.z = - z;
-	msg.yaw = 3.14;
+    TrajectorySetpoint msg{};
+    msg.timestamp = timestamp_.load();
+    msg.x = - x;
+    msg.y = - y;
+    msg.z = - z;
+    msg.yaw = 3.14;
 
-	trajectory_setpoint_publisher_->publish(msg);
+    trajectory_setpoint_publisher_->publish(msg);
 }
 
 // Send commands

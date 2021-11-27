@@ -42,11 +42,11 @@ class EnvWrapperNode:
 
         self.min_reward = -1
         # Weights for pos, velocity, angular velocity, action, 3 x single action
-        self.coeffs = np.array(-100, -10, -10, -1, 10, 10, 10)
+        self.coeffs = np.array([-100, -10, -10, -1, 10, 10, 10])
         self.stop_reward = 10
 
     def vehicle_odometry_callback(self, obs):
-        self.state = np.array(-obs.px, -obs.py, -obs.pz, -obs.vx, -obs.vy, -obs.vz, obs.wx, obs.wy, obs.wz)
+        self.state = np.array([-obs.x, -obs.y, -obs.z, -obs.vx, -obs.vy, -obs.vz, obs.rollspeed, obs.pitchspeed, obs.yawspeed])
         self.collision = self.check_collision()
 
     def timestamp_callback(self, msg):
@@ -57,15 +57,17 @@ class EnvWrapperNode:
             return self.state, self.min_reward, True
 
         action_msg = Float32MultiArray()
-        action_msg[0] = action[0]
-        action_msg[1] = action[1]
-        action_msg[2] = action[2]
-        self.vehicle_odometry_subscriber.publish(action_msg)
+        action_msg.data = [action[0], action[1], action[2]]
+        self.agent_vel_publisher.publish(action_msg)
+        
+        print("Waiting for action received")
 
         while not self.action_received:  # Wait for confirmation from environment
             pass
 
         reward, done = self.compute_reward(self.state, action)
+        
+        print("Reward: ", reward)
 
         self.previous_state = self.state
         self.action_received = False
@@ -100,10 +102,9 @@ class EnvWrapperNode:
         return self.state[2] <= self.eps_pos_z and \
                (self.state[5] > self.eps_vel_z or self.state[3] > self.eps_vel_xy or self.state[4] > self.eps_vel_xy)
 
-    def reset(self):
+    def reset_env(self):
         play_reset_msg = Float32MultiArray()
-        play_reset_msg[0] = 0
-        play_reset_msg[1] = 1
+        play_reset_msg.data = [0.0, 1.0]
         self.play_reset_publisher.publish(play_reset_msg)
         self.reset = True
 
@@ -111,7 +112,7 @@ class EnvWrapperNode:
             pass
 
     def play_reset_callback(self, msg):
-        if msg[1] == 0 and msg[0] == 1:
+        if msg.data[1] == 0 and msg.data[0] == 1:
             self.reset = False
 
 
