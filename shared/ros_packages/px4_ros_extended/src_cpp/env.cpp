@@ -5,14 +5,11 @@
 #include <math.h>
 #include <ctime>
 
-/* custom message */
 #include "custom_msgs/msg/float32_multi_array.hpp"
 
-/* ROS2 libs */
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/int64.hpp>
 
-/* PX4 libs */
 #include <px4_msgs/msg/timesync.hpp>
 #include <px4_msgs/msg/trajectory_setpoint.hpp>
 #include <px4_msgs/msg/vehicle_command.hpp>
@@ -54,17 +51,16 @@ class EnvNode : public rclcpp::Node {
                 });
 
             auto timer_callback = [this]() -> void {
-            
                 if (this->offboard_setpoint_counter_ == 30) {
-		    // Change to Offboard mode after 30 setpoints
-		    this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
+		            // Change to Offboard mode after 30 setpoints
+		            this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
 
-		    // Arm the vehicle
-		    this->arm();
-		    usleep(1000000);
+		            // Arm the vehicle
+		            this->arm();
+		            usleep(1000000);
                 }
                 
-		if(this->play==1 && this->reset==0) {  // Listen to actions
+		        if(this->play==1 && this->reset==0) {  // Listen to actions
                     this->land();
                 }
                 else if(this->play==0) {  // Go to new position or hover (avoids failsafe activation)
@@ -76,13 +72,12 @@ class EnvNode : public rclcpp::Node {
                     this->offboard_setpoint_counter_ += 1;
                 }
             };
-
             timer_ = this->create_wall_timer(100ms, timer_callback);
         }
 
+        void arm() const;
         void disarm() const;
         void land() const;
-        void arm() const;
 
     private:
         rclcpp::TimerBase::SharedPtr timer_;
@@ -112,7 +107,6 @@ class EnvNode : public rclcpp::Node {
         float y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
         float z = 1.5 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(6.0-1.5)));
 
-
         void publish_vehicle_command(uint16_t command, float param1 = 0.0, float param2 = 0.0) const;
         void publish_trajectory_setpoint_vel(float vx, float vy, float vz, float yawspeed) const;
         void takeoff(float x, float y, float z) const;
@@ -122,7 +116,6 @@ class EnvNode : public rclcpp::Node {
         void publish_offboard_control_mode(bool pos, bool vel, bool acc, bool att, bool br) const;
 };
 
-// Land
 void EnvNode::land() const
 {
     this->publish_offboard_control_mode(false, true, false, false, false);
@@ -206,7 +199,6 @@ void EnvNode::arm() const {
 	RCLCPP_INFO(this->get_logger(), "Arm command send");
 }
 
-// Control setpoint movement velocity
 void EnvNode::publish_trajectory_setpoint_vel(float vx, float vy, float vz, float yawspeed) const
 {
     TrajectorySetpoint msg{};
@@ -223,7 +215,6 @@ void EnvNode::publish_trajectory_setpoint_vel(float vx, float vy, float vz, floa
     trajectory_setpoint_publisher_->publish(msg);
 }
 
-// Control setpoint movement position
 void EnvNode::takeoff(float x, float y, float z) const {
     this->publish_offboard_control_mode(true, false, false, false, false);
     TrajectorySetpoint msg{};
@@ -236,7 +227,6 @@ void EnvNode::takeoff(float x, float y, float z) const {
     trajectory_setpoint_publisher_->publish(msg);
 }
 
-// Send commands
 void EnvNode::publish_vehicle_command(uint16_t command, float param1, float param2) const
 {
 	VehicleCommand msg{};
@@ -253,7 +243,6 @@ void EnvNode::publish_vehicle_command(uint16_t command, float param1, float para
 	vehicle_command_publisher_->publish(msg);
 }
 
-// Offboard control mode: Position, Velocity, Acceleration
 void EnvNode::publish_offboard_control_mode(bool pos, bool vel, bool acc, bool att, bool br) const
 {
 	OffboardControlMode msg{};
@@ -268,19 +257,12 @@ void EnvNode::publish_offboard_control_mode(bool pos, bool vel, bool acc, bool a
 }
 
 
-/* Main */
 int main(int argc, char* argv[])
 {
     cout << "Starting env node" << endl;
     setvbuf(stdout, NULL, _IONBF, BUFSIZ);
-
-    // Initialize ROS node
     rclcpp::init(argc, argv);
-
-    // Spin ROS node
     rclcpp::spin(std::make_shared<EnvNode>());
-
-    // Shutdown ROS node
     rclcpp::shutdown();
 
     return 0;

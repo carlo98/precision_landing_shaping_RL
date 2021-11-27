@@ -28,13 +28,13 @@ class DDPG:
         self.iter = 0
         self.noise = utils.OrnsteinUhlenbeckActionNoise(self.action_dim)
 
-        self.actor = Actor(self.state_dim, self.action_dim, self.action_lim).float()
-        self.target_actor = Actor(self.state_dim, self.action_dim, self.action_lim).float()
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(),LEARNING_RATE)
+        self.actor = Actor(self.state_dim, self.action_dim).float()
+        self.target_actor = Actor(self.state_dim, self.action_dim).float()
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), LEARNING_RATE)
 
         self.critic = Critic(self.state_dim, self.action_dim).float()
         self.target_critic = Critic(self.state_dim, self.action_dim).float()
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(),LEARNING_RATE)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), LEARNING_RATE)
 
         utils.hard_update(self.target_actor, self.actor)
         utils.hard_update(self.target_critic, self.critic)
