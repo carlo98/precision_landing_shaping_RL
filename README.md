@@ -73,20 +73,15 @@ micrortps_agent -t UDP
 ```
 
 #### Baseline
-At the moment this isn't working!
-
 Then takeoff with:
 ```
-ros2 run px4_ros_extended takeoff
-```
-
-Once the drone is stable run in two different windows:
-```
-ros2 run px4_ros_extended baseline_prec_land
 ros2 run px4_ros_extended env
 ```
 
-Once the first messages appear in the window in which you have runned the land node, stop the takeoff node with "ctrl-c."
+And perform the landing with:
+```
+ros2 run px4_ros_extended baseline_prec_land
+```
 
 #### Agent
 
