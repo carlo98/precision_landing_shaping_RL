@@ -64,10 +64,10 @@ class EnvNode : public rclcpp::Node {
 		    usleep(1000000);
                 }
                 
-		if(this->play==1 && this->reset==0) {
+		if(this->play==1 && this->reset==0) {  // Listen to actions
                     this->land();
                 }
-                else if(this->play==0 && this->reset==1) {
+                else if(this->play==0) {  // Go to new position or hover (avoids failsafe activation)
                     this->takeoff(this->x, this->y, this->z);
                 }
                 
@@ -77,7 +77,7 @@ class EnvNode : public rclcpp::Node {
                 }
             };
 
-            timer_ = this->create_wall_timer(33ms, timer_callback);
+            timer_ = this->create_wall_timer(100ms, timer_callback);
         }
 
         void disarm() const;
@@ -148,6 +148,12 @@ void EnvNode::play_reset_callback(const Float32MultiArray::SharedPtr msg_float)
     
     if(this->reset == 0 && msg_float->data[1]==1) {  // Restart takeoff, sample random position
     
+        // Reset velocities
+        this->vx = 0.0;   
+        this->vy = 0.0;
+        this->vz = 0.0;
+    
+        // Sample random position
         float sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
         if(sign >= 0.5){
             this->x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
@@ -178,7 +184,7 @@ void EnvNode::odometry_callback(const VehicleOdometry::SharedPtr msg)
          this->agent_action_received_publisher_->publish(this->int64Msg);
          
          this->float32Vector.clear();
-         this->float32Vector.push_back(1);  // Play
+         this->float32Vector.push_back(2);  // Play, do not care, just listen to this
          this->float32Vector.push_back(0);  // Reset
 
          this->float32Msg.data = this->float32Vector;

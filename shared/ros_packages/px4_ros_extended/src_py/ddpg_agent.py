@@ -43,16 +43,15 @@ class AgentNode:
     def train(self):
     
         while self.env.reset:  # Waiting for env to stop resetting
-            inputs = self.env.state
+            self.previous_obs = inputs = self.env.state
+            
+        self.env.play_env()  # Start landing listening
 
         while self.cont_steps <= self.info_dict['num-env-steps']:
             with torch.no_grad():
                 action = self.ddpg.get_exploration_action(inputs)
-                
-            print("Action: ", action)
             
             inputs, reward, done = self.env.act(action)
-            self.previous_obs = inputs
 
             self.memory.add(self.previous_obs, action, reward, inputs)
 
@@ -61,14 +60,17 @@ class AgentNode:
                 self.env.reset_env()
                 if self.cont_steps % self.info_dict['train_freq'] == 0:
                     self.ddpg.optimize()
-                inputs = self.env.state
-
-            self.cont_steps += 1
+                    
+                self.env.play_env()  # Restart landing listening, after training
             
             if done:
                 print("Done")
                 self.env.reset_env()
-                inputs = self.env.state
+                self.env.play_env()  # Restart landing listening, after done
+                
+            self.previous_obs = inputs
+            inputs = self.env.state
+            self.cont_steps += 1
 
         self.ddpg.save_models(self.cont_steps)
 

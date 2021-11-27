@@ -34,11 +34,14 @@ class EnvWrapperNode:
         self.collision = False
         self.current_shaping = 0.0
         self.reset = True
+        self.play = False
 
         self.eps_pos_z = 0.05
         self.eps_pos_xy = 0.1
         self.eps_vel_z = 0.1
         self.eps_vel_xy = 0.1
+        self.max_vel_z = 5.0
+        self.max_vel_xy = 5.0
 
         self.min_reward = -1
         # Weights for pos, velocity, angular velocity, action, 3 x single action
@@ -57,10 +60,8 @@ class EnvWrapperNode:
             return self.state, self.min_reward, True
 
         action_msg = Float32MultiArray()
-        action_msg.data = [action[0], action[1], action[2]]
+        action_msg.data = [action[0] * self.max_vel_xy, action[1] * self.max_vel_xy, action[2] * self.max_vel_z]
         self.agent_vel_publisher.publish(action_msg)
-        
-        print("Waiting for action received")
 
         while not self.action_received:  # Wait for confirmation from environment
             pass
@@ -107,12 +108,19 @@ class EnvWrapperNode:
         play_reset_msg.data = [0.0, 1.0]
         self.play_reset_publisher.publish(play_reset_msg)
         self.reset = True
+        self.play = False
 
         while self.reset:  # Wait for takeoff completion
             pass
-
+            
+    def play_env(self):
+        play_reset_msg = Float32MultiArray()
+        play_reset_msg.data = [1.0, 0.0]
+        self.play_reset_publisher.publish(play_reset_msg)
+        self.play = True
+        
     def play_reset_callback(self, msg):
-        if msg.data[1] == 0 and msg.data[0] == 1:
+        if msg.data[1] == 0:
             self.reset = False
 
 
