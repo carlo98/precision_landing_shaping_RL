@@ -1,43 +1,45 @@
 from __future__ import division
+import os
 import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
 
 import DDPG.utils as utils
-from DDPG.model import Critic, Actor
-
-BATCH_SIZE = 128
-LEARNING_RATE = 0.001
-GAMMA = 0.99
-TAU = 0.001
+from DDPG.model_paper import Critic, Actor
 
 
 class DDPG:
-    def __init__(self, state_dim, action_dim, action_lim, ram):
+    def __init__(self, state_dim, action_dim, ram, lr=0.001, gamma=0.99, tau=0.001, batch_size=128):
         """
         :param state_dim: Dimensions of state (int)
         :param action_dim: Dimension of action (int)
-        :param action_lim: Used to limit action in [-action_lim,action_lim]
         :param ram: replay memory buffer object
         :return:
         """
         self.state_dim = state_dim
         self.action_dim = action_dim
-        self.action_lim = action_lim
         self.ram = ram
         self.iter = 0
         self.noise = utils.OrnsteinUhlenbeckActionNoise(self.action_dim)
 
         self.actor = Actor(self.state_dim, self.action_dim).float()
         self.target_actor = Actor(self.state_dim, self.action_dim).float()
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), LEARNING_RATE)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr)
 
         self.critic = Critic(self.state_dim, self.action_dim).float()
         self.target_critic = Critic(self.state_dim, self.action_dim).float()
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), LEARNING_RATE)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr)
 
         utils.hard_update(self.target_actor, self.actor)
         utils.hard_update(self.target_critic, self.critic)
+
+        self.gamma = gamma
+        self.tau = tau
+        self.batch_size = batch_size
+        
+        self.path_models = "/src/shared/models"
+        if not os.path.isdir(self.path_models):
+            os.mkdir(self.path_models)
 
     def get_exploitation_action(self, state):
         """
@@ -57,7 +59,7 @@ class DDPG:
         """
         state = Variable(torch.from_numpy(state).float())
         action = self.actor.forward(state).detach()
-        new_action = action.data.numpy() + (self.noise.sample() * self.action_lim)
+        new_action = action.data.numpy() + self.noise.sample()
         return new_action
 
     def optimize(self):
@@ -65,7 +67,7 @@ class DDPG:
         Samples a random batch from replay memory and performs optimization
         :return:
         """
-        s1, a1, r1, s2 = self.ram.sample(BATCH_SIZE)
+        s1, a1, r1, s2 = self.ram.sample(self.batch_size)
 
         s1 = Variable(torch.from_numpy(s1))
         a1 = Variable(torch.from_numpy(a1))
@@ -77,7 +79,7 @@ class DDPG:
         a2 = self.target_actor.forward(s2).detach()
         next_val = torch.squeeze(self.target_critic.forward(s2, a2).detach())
         # y_exp = r + gamma*Q'( s2, pi'(s2))
-        y_expected = r1 + GAMMA*next_val
+        y_expected = r1 + self.gamma * next_val
         # y_pred = Q( s1, a1)
         y_predicted = torch.squeeze(self.critic.forward(s1, a1))
         # compute critic loss, and update the critic
@@ -92,9 +94,11 @@ class DDPG:
         self.actor_optimizer.zero_grad()
         loss_actor.backward()
         self.actor_optimizer.step()
+        
+        print("Loss Critic: " + str(loss_critic.item()) + " Loss Actor: " + str(loss_actor.item()))
 
-        utils.soft_update(self.target_actor, self.actor, TAU)
-        utils.soft_update(self.target_critic, self.critic, TAU)
+        utils.soft_update(self.target_actor, self.actor, self.tau)
+        utils.soft_update(self.target_critic, self.critic, self.tau)
 
     def save_models(self, episode_count):
         """
@@ -102,8 +106,8 @@ class DDPG:
         :param episode_count: the count of episodes iterated
         :return:
         """
-        torch.save(self.target_actor.state_dict(), './Models/' + str(episode_count) + '_actor.pt')
-        torch.save(self.target_critic.state_dict(), './Models/' + str(episode_count) + '_critic.pt')
+        torch.save(self.target_actor.state_dict(), self.path_models + '/' + str(episode_count) + '_actor.pt')
+        torch.save(self.target_critic.state_dict(), self.path_models + '/' + str(episode_count) + '_critic.pt')
         print('Models saved successfully')
 
     def load_models(self, episode):
@@ -112,8 +116,8 @@ class DDPG:
         :param episode: the count of episodes iterated (used to find the file name)
         :return:
         """
-        self.actor.load_state_dict(torch.load('./Models/' + str(episode) + '_actor.pt'))
-        self.critic.load_state_dict(torch.load('./Models/' + str(episode) + '_critic.pt'))
+        self.actor.load_state_dict(torch.load(self.path_models + '/' + str(episode) + '_actor.pt'))
+        self.critic.load_state_dict(torch.load(self.path_models + '/' + str(episode) + '_critic.pt'))
         utils.hard_update(self.target_actor, self.actor)
         utils.hard_update(self.target_critic, self.critic)
-        print('Models loaded succesfully')
+        print('Models loaded successfully')

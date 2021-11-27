@@ -103,9 +103,13 @@ class EnvNode : public rclcpp::Node {
         float vy = 0.0;
         int play = 0;  // if 1 listen to velocity from agent, 0 stop publish velocity
         int reset = 1;  // if 1 perform takeoff, 0 takeoff complete
-        float x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
-        float y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
-        float z = 1.5 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(6.0-1.5)));
+        int max_z = 3.0;
+        int min_z = 1.5;
+        int max_xy = 3.0;
+        
+        float x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_xy-0.0)));
+        float y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_xy-0.0)));
+        float z = min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_z-min_z)));
 
         void publish_vehicle_command(uint16_t command, float param1 = 0.0, float param2 = 0.0) const;
         void publish_trajectory_setpoint_vel(float vx, float vy, float vz, float yawspeed) const;
@@ -149,17 +153,17 @@ void EnvNode::play_reset_callback(const Float32MultiArray::SharedPtr msg_float)
         // Sample random position
         float sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
         if(sign >= 0.5){
-            this->x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
+            this->x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
         } else {
-            this->x = - 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
+            this->x = - 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
         }
         sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
         if(sign >= 0.5){
-            this->y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
+            this->y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
         } else {
-            this->y = - 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(10.0-0.0)));
+            this->y = - 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
         }
-        this->z = 1.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(5.0-1.0)));
+        this->z = this->min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_z-this->min_z)));
     }
     
     this->reset = msg_float->data[1];  // if 1 perform takeoff, 0 takeoff complete
@@ -177,7 +181,7 @@ void EnvNode::odometry_callback(const VehicleOdometry::SharedPtr msg)
          this->agent_action_received_publisher_->publish(this->int64Msg);
          
          this->float32Vector.clear();
-         this->float32Vector.push_back(2);  // Play, do not care, just listen to this
+         this->float32Vector.push_back(0);  // Play, do not care, just listen to this
          this->float32Vector.push_back(0);  // Reset
 
          this->float32Msg.data = this->float32Vector;

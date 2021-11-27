@@ -1,6 +1,9 @@
 import numpy as np
 import random
+import pandas as pd
 from collections import deque
+from datetime import datetime
+import os
 
 
 class Memory:
@@ -8,6 +11,10 @@ class Memory:
         self.buffer = deque(maxlen=size)
         self.maxSize = size
         self.len = 0
+        
+        self.path_logs = "/src/shared/logs"
+        if not os.path.isdir(self.path_logs):
+            os.mkdir(self.path_logs)
 
     def sample(self, count):
         """
@@ -27,18 +34,27 @@ class Memory:
 
     def len(self):
         return self.len
+        
+    def log(self):
+        df = pd.DataFrame(self.buffer, columns=['state', 'action', 'reward', 'new_state', 'episode_id'])
+        now = datetime.now()
+        filename = '/'+str(now.year)+'_'+str(now.month)+'_'+str(now.day)+'_'+str(now.hour)+'_'+str(now.minute)+'_'+str(now.second)
+        df.to_csv(self.path_logs+filename+".csv")
 
-    def add(self, s, a, r, s1):
+    def add(self, s, a, r, s1, le):
         """
         adds a particular transaction in the memory buffer
         :param s: current state
         :param a: action taken
         :param r: reward received
         :param s1: next state
+        :param le: log episode id (int)
         :return:
         """
-        transition = (s, a, r, s1)
-        self.len += 1
+        transition = (s, a, r, s1, le)
         if self.len > self.maxSize:
             self.len = self.maxSize
+        else:
+            self.len += 1
         self.buffer.append(transition)
+

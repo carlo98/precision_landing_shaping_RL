@@ -30,48 +30,66 @@ class AgentNode:
 
         self.env = EnvWrapperNode(node)
         self.memory = Memory(self.info_dict['max_memory_len'])
-        self.ddpg = DDPG(self.info_dict['obs_shape'], self.info_dict['action_space'], 1,  self.memory)
-
-        self.start = time.time()
-
+        self.ddpg = DDPG(self.info_dict['obs_shape'], self.info_dict['action_space'], self.memory,
+                         lr=self.info_dict['lr'], gamma=self.info_dict['gamma'],
+                         tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'])
+                         
+        self.num_log_episodes = self.info_dict['num-steps'] * self.info_dict['log_interval_episodes']
+        
         self.cont_steps = 0
         self.previous_obs = np.zeros(self.info_dict['obs_shape'])
         self.previous_action = np.zeros(self.info_dict['action_space'])
         self.previous_action_log_prob = np.zeros(self.info_dict['action_space'])
         self.previous_value = 0.0
 
+        self.start_time = time.time()
+
     def train(self):
+    
+        episode_steps = 0
+        episode_tot_reward = 0.0
     
         while self.env.reset:  # Waiting for env to stop resetting
             self.previous_obs = inputs = self.env.state
             
         self.env.play_env()  # Start landing listening
+        start_time_episode = time.time()
 
         while self.cont_steps <= self.info_dict['num-env-steps']:
             with torch.no_grad():
                 action = self.ddpg.get_exploration_action(inputs)
             
             inputs, reward, done = self.env.act(action)
+            episode_tot_reward += reward
 
-            self.memory.add(self.previous_obs, action, reward, inputs)
+            self.memory.add(self.previous_obs, action, reward, inputs, int(self.cont_steps / self.info_dict['num-steps']))
 
-            if self.cont_steps % self.info_dict['num-steps'] == 0:
-                print("End episode")
+            if (self.cont_steps % self.info_dict['num-steps'] == 0 and self.cont_steps > 0) or done:
+                if done:
+                    print("Done")
+                else:
+                    print("End episode")
+                print("Mean reward: " + str(episode_tot_reward / episode_steps) + " Time: " + str(time.time()-start_time_episode))
                 self.env.reset_env()
                 if self.cont_steps % self.info_dict['train_freq'] == 0:
+                    print("Training...")
                     self.ddpg.optimize()
+                    print("Training ended")
+                    
+                if self.cont_steps % self.num_log_episodes == 0:
+                    self.memory.log()
                     
                 self.env.play_env()  # Restart landing listening, after training
-            
-            if done:
-                print("Done")
-                self.env.reset_env()
-                self.env.play_env()  # Restart landing listening, after done
+                start_time_episode = time.time()
+                episode_steps = 0
+                episode_tot_reward = 0.0
                 
             self.previous_obs = inputs
             inputs = self.env.state
             self.cont_steps += 1
+            episode_steps += 1
 
+        print("Saving model...\nTotal time: ", time.time()-self.start_time)
         self.ddpg.save_models(self.cont_steps)
 
  
