@@ -124,7 +124,6 @@ void EnvNode::land() const
 {
     this->publish_offboard_control_mode(false, true, false, false, false);
 	this->publish_trajectory_setpoint_vel(this->vx, this->vy, this->vz, 0.0);
-	RCLCPP_INFO(this->get_logger(), "Land command send");
 }
 
 // Receive action from agent

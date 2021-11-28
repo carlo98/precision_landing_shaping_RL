@@ -38,14 +38,14 @@ class BaselinePrecLandNode : public rclcpp::Node {
             // Main loop
             auto timer_callback = [this]() -> void {
                 this->float32Vector.clear();
-                this->float32Vector.push_back(0.2 * (this->x_drone - this->x_pos));
-                this->float32Vector.push_back(0.2 * (this->y_drone - this->y_pos));
-                this->float32Vector.push_back(0.5 * (this->z_drone - this->z_pos));
+                this->float32Vector.push_back(0.8 * (this->x_drone - this->x_pos));
+                this->float32Vector.push_back(0.8 * (this->y_drone - this->y_pos));
+                this->float32Vector.push_back(0.8 * (this->z_drone - this->z_pos));
 
                 this->float32Msg.data = this->float32Vector;
                 this->pub_agent_vec->publish(this->float32Msg);
             };
-            timer_ = this->create_wall_timer(200ms, timer_callback);
+            timer_ = this->create_wall_timer(100ms, timer_callback);
         }
 
     private:
@@ -61,12 +61,12 @@ class BaselinePrecLandNode : public rclcpp::Node {
 
         std::atomic<uint64_t> timestamp_;
         
-        float x_pos = 0.5;
-        float y_pos = 1.0;
+        float x_pos = 0.0;
+        float y_pos = 0.0;
         float z_pos = 0.0;
         float x_drone = 0.0;
         float y_drone = 0.0;
-        float z_drone = 0.0;
+        float z_drone = 0.11;  // Drone height ~ 0.10m
         int reset = 1;
         Float32MultiArray float32Msg = Float32MultiArray();
         std::vector<float> float32Vector = std::vector<float>(3);

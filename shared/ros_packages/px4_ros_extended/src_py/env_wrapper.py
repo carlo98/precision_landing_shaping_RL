@@ -15,7 +15,7 @@ from custom_msgs.msg import Float32MultiArray
 
 
 class EnvWrapperNode:
-    def __init__(self, node):
+    def __init__(self, node, max_height, max_side, max_vel_z, max_vel_xy):
         self.node = node
 
         self.vehicle_odometry_subscriber = self.node.create_subscription(VehicleOdometry, 'fmu/vehicle_odometry/out',
@@ -27,24 +27,30 @@ class EnvWrapperNode:
                                                                              self.action_received_callback, 1)
         self.timesync_sub_ = self.node.create_subscription(Timesync, "fmu/timesync/out", self.timestamp_callback, 1)
 
-        self.reward = Reward()
+        self.reward = Reward(max_height, max_side)
 
         self.action_received = False
         self.timestamp_ = 0.0
-        self.state = self.previous_state = np.zeros(9)
+        self.state = self.previous_state = np.zeros(6)
         self.collision = False
         self.reset = True
         self.play = False
 
-        self.eps_pos_z = 0.15
-        self.eps_pos_xy = 0.15
-        self.eps_vel_z = 0.1
+        self.eps_pos_z = 0.20  # Drone height in Gazebo ~0.11m
+        self.eps_pos_xy = 0.10
         self.eps_vel_xy = 0.1
-        self.max_vel_z = 1.5
-        self.max_vel_xy = 1.5
+        self.max_vel_z = max_vel_z
+        self.max_vel_xy = max_vel_xy
+        self.max_side = max_side
+        self.max_height = max_height
 
     def vehicle_odometry_callback(self, obs):
-        self.state = np.array([-obs.x, -obs.y, -obs.z, -obs.vx, -obs.vy, -obs.vz])  # obs.rollspeed, obs.pitchspeed, obs.yawspeed])
+        # obs.rollspeed, obs.pitchspeed, obs.yawspeed])
+        self.state = np.array([-obs.x, -obs.y, -obs.z, -obs.vx, -obs.vy, -obs.vz])
+        self.state[:2] /= self.max_side
+        self.state[2] /= self.max_height
+        self.state[3:5] /= self.max_vel_xy
+        self.state[5] /= self.max_vel_z
         self.collision = self.check_collision()
 
     def timestamp_callback(self, msg):
@@ -54,13 +60,13 @@ class EnvWrapperNode:
 
         if not self.collision:
             action_msg = Float32MultiArray()
-            action_msg.data = [action[0] * self.max_vel_xy, action[1] * self.max_vel_xy, action[2] * self.max_vel_z]
+            action_msg.data = [action[0] * self.max_vel_xy, action[1] * self.max_vel_xy, -0.8*np.abs(self.state[2])]  # Fixed z velocity
             self.agent_vel_publisher.publish(action_msg)
 
             while not self.action_received:  # Wait for confirmation from environment
                 pass
 
-        reward, done = self.reward.get_reward(self.state, action, self.eps_pos_z, self.eps_pos_xy, self.eps_vel_z, self.eps_vel_xy)
+        reward, done = self.reward.get_reward(self.state, action, self.eps_pos_z, self.eps_pos_xy, self.eps_vel_xy)
 
         self.previous_state = self.state
         self.action_received = False
@@ -71,7 +77,7 @@ class EnvWrapperNode:
 
     def check_collision(self):
         return self.play and np.abs(self.state[2]) <= self.eps_pos_z and \
-               (np.abs(self.state[5]) > self.eps_vel_z or np.abs(self.state[3]) > self.eps_vel_xy or np.abs(self.state[4]) > self.eps_vel_xy)
+               (np.abs(self.state[3]) > self.eps_vel_xy or np.abs(self.state[4]) > self.eps_vel_xy)
 
     def reset_env(self):  # Used for synchronization with gazebo
         play_reset_msg = Float32MultiArray()
@@ -94,10 +100,3 @@ class EnvWrapperNode:
     def play_reset_callback(self, msg):  # Used for synchronization with gazebo
         if msg.data[1] == 0:
             self.reset = False
-
-
-if __name__ == '__main__':
-    rclpy.init(args=None)
-    m_node = rclpy.create_node('gs_node')
-    gsNode = EnvWrapperNode(m_node)
-    rclpy.spin(m_node)

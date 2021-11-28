@@ -1,13 +1,17 @@
 # General
-action_space: 3
+action_space: 2
 obs_shape: 6
-lr: 0.001
+lr: 0.003
 num-env-steps: 1000000
-train_freq: 300  # It has to be a multiple of num_steps
-num-steps: 300
+train_freq: 500  # It has to be a multiple of num_steps
+num-steps: 500
 seed: 5
 max_memory_len: 10000
 log_interval_episodes: 10
+max_height: 5.0
+max_side: 5.0
+max_vel_z: 2.0
+max_vel_xy: 2.0
 
 # PPO
 clip_param: 0.1
@@ -21,6 +25,6 @@ num-processes: 4
 
 # DDPG
 epochs: 5
-batch_size: 128
+batch_size: 256
 gamma: 0.99
 tau: 0.001

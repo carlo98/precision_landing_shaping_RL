@@ -28,7 +28,8 @@ class AgentNode:
         torch.manual_seed(self.info_dict['seed'])
         torch.cuda.manual_seed_all(self.info_dict['seed'])
 
-        self.env = EnvWrapperNode(node)
+        self.env = EnvWrapperNode(node, self.info_dict['max_height'], self.info_dict['max_side'],
+                                  self.info_dict['max_vel_z'], self.info_dict['max_vel_xy'])
         self.memory = Memory(self.info_dict['max_memory_len'])
         self.ddpg = DDPG(self.info_dict['obs_shape'], self.info_dict['action_space'], self.memory,
                          lr=self.info_dict['lr'], gamma=self.info_dict['gamma'],

@@ -1,8 +1,8 @@
 import numpy as np
 import random
 import pickle
+import re
 from collections import deque
-from datetime import datetime
 import os
 
 
@@ -15,6 +15,16 @@ class Memory:
         self.path_logs = "/src/shared/logs"
         if not os.path.isdir(self.path_logs):
             os.mkdir(self.path_logs)
+            self.id_file = 0
+        else:
+            max_folder = -1
+            regex_folder_name = re.compile("^[0-9]*$")
+            for folder in os.listdir(self.path_logs):
+                if regex_folder_name.match(folder) is not None:
+                    tmp = int(folder)
+                    if tmp > max_folder:
+                        max_folder = tmp
+            self.id_file = max_folder + 1
 
     def sample(self, count):
         """
@@ -36,9 +46,8 @@ class Memory:
         return self.len
         
     def log(self):
-        now = datetime.now()
-        filename = '/'+str(now.year)+'_'+str(now.month)+'_'+str(now.day)+'_'+str(now.hour)+'_'+str(now.minute)
-        with open(self.path_logs+filename+".pkl", "wb") as pkl_f:
+        filename = '/log_' + str(self.id_file) + ".pkl"
+        with open(self.path_logs+filename, "wb") as pkl_f:
             pickle.dump(self.buffer, pkl_f)
 
     def add(self, s, a, r, s1, le):
