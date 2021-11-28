@@ -40,9 +40,6 @@ class AgentNode:
         
         self.cont_steps = 0
         self.previous_obs = np.zeros(self.info_dict['obs_shape'])
-        self.previous_action = np.zeros(self.info_dict['action_space'])
-        self.previous_action_log_prob = np.zeros(self.info_dict['action_space'])
-        self.previous_value = 0.0
 
         self.start_time = time.time()
 
@@ -51,21 +48,26 @@ class AgentNode:
         episode_steps = 0
         episode_tot_reward = 0.0
 
-        self.previous_obs = inputs = self.env.state
+        inputs = self.env.state
+        self.previous_obs = np.copy(inputs)
         while self.env.reset:  # Waiting for env to stop resetting
-            self.previous_obs = inputs = self.env.state
-            
+            inputs = self.env.state
+            self.previous_obs = np.copy(inputs)
+        self.previous_obs = self.normalize_input(np.copy(inputs))
+
         self.env.play_env()  # Start landing listening
         start_time_episode = time.time()
 
         while self.cont_steps <= self.info_dict['num-env-steps']:
             with torch.no_grad():
-                action = self.ddpg.get_exploration_action(inputs)
+                normalized_input = self.normalize_input(np.copy(inputs))
+                action = self.ddpg.get_exploration_action(normalized_input)
             
             inputs, reward, done = self.env.act(action)
+            normalized_input = self.normalize_input(np.copy(inputs))
             episode_tot_reward += reward
 
-            self.memory.add(self.previous_obs, action, reward, inputs, int(self.cont_steps / self.info_dict['num-steps']))
+            self.memory.add(self.previous_obs, action, reward, normalized_input, int(self.cont_steps / self.info_dict['num-steps']))
 
             if (self.cont_steps % self.info_dict['num-steps'] == 0 and self.cont_steps > 0) or done:
                 if done:
@@ -90,13 +92,20 @@ class AgentNode:
                 episode_steps = 0
                 episode_tot_reward = 0.0
                 
-            self.previous_obs = inputs
+            self.previous_obs = normalized_input
             inputs = self.env.state
             self.cont_steps += 1
             episode_steps += 1
 
         print("Saving model...\nTotal time: ", time.time()-self.start_time)
         self.ddpg.save_models(self.cont_steps)
+
+    def normalize_input(self, inputs):
+        inputs[:2] /= self.info_dict['max_side']
+        inputs[2] /= self.info_dict['max_height']
+        inputs[3:5] /= self.info_dict['max_vel_xy']
+        inputs[5] /= self.info_dict['max_vel_z']
+        return inputs
 
  
 def spin_thread(node):

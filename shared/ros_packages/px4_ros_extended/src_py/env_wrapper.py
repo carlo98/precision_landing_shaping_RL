@@ -41,16 +41,10 @@ class EnvWrapperNode:
         self.eps_vel_xy = 0.1
         self.max_vel_z = max_vel_z
         self.max_vel_xy = max_vel_xy
-        self.max_side = max_side
-        self.max_height = max_height
 
     def vehicle_odometry_callback(self, obs):
         # obs.rollspeed, obs.pitchspeed, obs.yawspeed])
         self.state = np.array([-obs.x, -obs.y, -obs.z, -obs.vx, -obs.vy, -obs.vz])
-        self.state[:2] /= self.max_side
-        self.state[2] /= self.max_height
-        self.state[3:5] /= self.max_vel_xy
-        self.state[5] /= self.max_vel_z
         self.collision = self.check_collision()
 
     def timestamp_callback(self, msg):
@@ -68,7 +62,7 @@ class EnvWrapperNode:
 
         reward, done = self.reward.get_reward(self.state, action, self.eps_pos_z, self.eps_pos_xy, self.eps_vel_xy)
 
-        self.previous_state = self.state
+        self.previous_state = np.copy(self.state)
         self.action_received = False
         return self.state, reward, done
 
@@ -92,7 +86,7 @@ class EnvWrapperNode:
     def play_env(self):  # Used for synchronization with gazebo
         play_reset_msg = Float32MultiArray()
         play_reset_msg.data = [1.0, 0.0]
-        self.previous_state = self.state  # Reset previous state
+        self.previous_state = np.copy(self.state)  # Reset previous state
         self.reward.init_shaping(self.state)  # Initialising shaping for reward
         self.play_reset_publisher.publish(play_reset_msg)
         self.play = True
