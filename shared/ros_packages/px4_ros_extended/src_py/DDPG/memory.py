@@ -1,6 +1,6 @@
 import numpy as np
 import random
-import pandas as pd
+import pickle
 from collections import deque
 from datetime import datetime
 import os
@@ -36,10 +36,10 @@ class Memory:
         return self.len
         
     def log(self):
-        df = pd.DataFrame(self.buffer, columns=['state', 'action', 'reward', 'new_state', 'episode_id'])
         now = datetime.now()
-        filename = '/'+str(now.year)+'_'+str(now.month)+'_'+str(now.day)+'_'+str(now.hour)+'_'+str(now.minute)+'_'+str(now.second)
-        df.to_csv(self.path_logs+filename+".csv")
+        filename = '/'+str(now.year)+'_'+str(now.month)+'_'+str(now.day)+'_'+str(now.hour)+'_'+str(now.minute)
+        with open(self.path_logs+filename+".pkl", "wb") as pkl_f:
+            pickle.dump(self.buffer, pkl_f)
 
     def add(self, s, a, r, s1, le):
         """

@@ -32,7 +32,8 @@ class AgentNode:
         self.memory = Memory(self.info_dict['max_memory_len'])
         self.ddpg = DDPG(self.info_dict['obs_shape'], self.info_dict['action_space'], self.memory,
                          lr=self.info_dict['lr'], gamma=self.info_dict['gamma'],
-                         tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'])
+                         tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'],
+                         epochs=self.info_dict['epochs'])
                          
         self.num_log_episodes = self.info_dict['num-steps'] * self.info_dict['log_interval_episodes']
         
@@ -48,7 +49,8 @@ class AgentNode:
     
         episode_steps = 0
         episode_tot_reward = 0.0
-    
+
+        self.previous_obs = inputs = self.env.state
         while self.env.reset:  # Waiting for env to stop resetting
             self.previous_obs = inputs = self.env.state
             
@@ -68,7 +70,8 @@ class AgentNode:
                 if done:
                     print("Done")
                 else:
-                    print("End episode")
+                    print("End episode " + str(int(self.cont_steps / self.info_dict['num-steps'])))
+                print("Position x: " + str(-inputs[0]) + " y: " + str(-inputs[1]) + " z: " + str(-inputs[2]))
                 print("Mean reward: " + str(episode_tot_reward / episode_steps) + " Time: " + str(time.time()-start_time_episode))
                 self.env.reset_env()
                 if self.cont_steps % self.info_dict['train_freq'] == 0:
@@ -77,7 +80,9 @@ class AgentNode:
                     print("Training ended")
                     
                 if self.cont_steps % self.num_log_episodes == 0:
+                    print("Saving in memory file.")
                     self.memory.log()
+                print()
                     
                 self.env.play_env()  # Restart landing listening, after training
                 start_time_episode = time.time()

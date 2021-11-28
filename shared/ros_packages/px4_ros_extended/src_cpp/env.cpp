@@ -38,8 +38,8 @@ class EnvNode : public rclcpp::Node {
             trajectory_setpoint_publisher_ = this->create_publisher<TrajectorySetpoint>("fmu/trajectory_setpoint/in", 2);
             agent_action_received_publisher_ = this->create_publisher<Int64>("/agent/action_received", 1);
             agent_subscriber = this->create_subscription<Float32MultiArray>("/agent/velocity", 1, std::bind(&EnvNode::agent_callback, this, _1));
-            play_reset_subscriber = this->create_subscription<Float32MultiArray>("/env/play_reset", 1, std::bind(&EnvNode::play_reset_callback, this, _1));
-            play_reset_publisher = this->create_publisher<Float32MultiArray>("/env/play_reset", 1);
+            play_reset_subscriber = this->create_subscription<Float32MultiArray>("/env/play_reset/in", 1, std::bind(&EnvNode::play_reset_callback, this, _1));
+            play_reset_publisher = this->create_publisher<Float32MultiArray>("/env/play_reset/out", 1);
             
             srand (static_cast <unsigned> (time(0)));
 

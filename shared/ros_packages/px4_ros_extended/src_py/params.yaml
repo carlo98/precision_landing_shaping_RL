@@ -1,12 +1,12 @@
 # General
 action_space: 3
-obs_shape: 9
+obs_shape: 6
 lr: 0.001
 num-env-steps: 1000000
-train_freq: 500  # It has to be a multiple of num_steps
-num-steps: 250
+train_freq: 300  # It has to be a multiple of num_steps
+num-steps: 300
 seed: 5
-max_memory_len: 5000
+max_memory_len: 10000
 log_interval_episodes: 10
 
 # PPO
@@ -20,6 +20,7 @@ gae_lambda: 0.95
 num-processes: 4
 
 # DDPG
+epochs: 5
 batch_size: 128
 gamma: 0.99
 tau: 0.001

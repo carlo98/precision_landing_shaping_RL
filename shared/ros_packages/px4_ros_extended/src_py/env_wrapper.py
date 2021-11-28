@@ -21,8 +21,8 @@ class EnvWrapperNode:
         self.vehicle_odometry_subscriber = self.node.create_subscription(VehicleOdometry, 'fmu/vehicle_odometry/out',
                                                                          self.vehicle_odometry_callback, 1)
         self.agent_vel_publisher = self.node.create_publisher(Float32MultiArray, "/agent/velocity", 1)
-        self.play_reset_publisher = self.node.create_publisher(Float32MultiArray, "/env/play_reset", 1)
-        self.play_reset_subscriber = self.node.create_subscription(Float32MultiArray, "/env/play_reset", self.play_reset_callback, 1)
+        self.play_reset_publisher = self.node.create_publisher(Float32MultiArray, "/env/play_reset/in", 1)
+        self.play_reset_subscriber = self.node.create_subscription(Float32MultiArray, "/env/play_reset/out", self.play_reset_callback, 1)
         self.agent_action_received_publisher = self.node.create_subscription(Int64, "/agent/action_received",
                                                                              self.action_received_callback, 1)
         self.timesync_sub_ = self.node.create_subscription(Timesync, "fmu/timesync/out", self.timestamp_callback, 1)
@@ -36,14 +36,15 @@ class EnvWrapperNode:
         self.reset = True
         self.play = False
 
-        self.eps_pos_z = 0.05
+        self.eps_pos_z = 0.15
+        self.eps_pos_xy = 0.15
         self.eps_vel_z = 0.1
         self.eps_vel_xy = 0.1
         self.max_vel_z = 1.5
         self.max_vel_xy = 1.5
 
     def vehicle_odometry_callback(self, obs):
-        self.state = np.array([-obs.x, -obs.y, -obs.z, -obs.vx, -obs.vy, -obs.vz, obs.rollspeed, obs.pitchspeed, obs.yawspeed])
+        self.state = np.array([-obs.x, -obs.y, -obs.z, -obs.vx, -obs.vy, -obs.vz])  # obs.rollspeed, obs.pitchspeed, obs.yawspeed])
         self.collision = self.check_collision()
 
     def timestamp_callback(self, msg):
@@ -59,7 +60,7 @@ class EnvWrapperNode:
             while not self.action_received:  # Wait for confirmation from environment
                 pass
 
-        reward, done = self.reward.get_reward(self.state, action, self.eps_pos_z, self.eps_vel_z, self.eps_vel_xy)
+        reward, done = self.reward.get_reward(self.state, action, self.eps_pos_z, self.eps_pos_xy, self.eps_vel_z, self.eps_vel_xy)
 
         self.previous_state = self.state
         self.action_received = False

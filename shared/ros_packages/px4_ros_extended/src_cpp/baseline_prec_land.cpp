@@ -24,8 +24,8 @@ class BaselinePrecLandNode : public rclcpp::Node {
         BaselinePrecLandNode() : Node("baseline_prec_land_node") 
         {
             pub_agent_vec = this->create_publisher<Float32MultiArray>("/agent/velocity", 1);
-            play_reset_publisher = this->create_publisher<Float32MultiArray>("/env/play_reset", 1);
-            play_reset_subscriber = this->create_subscription<Float32MultiArray>("/env/play_reset", 1, std::bind(&BaselinePrecLandNode::play_reset_callback, this, _1));
+            play_reset_publisher = this->create_publisher<Float32MultiArray>("/env/play_reset/in", 1);
+            play_reset_subscriber = this->create_subscription<Float32MultiArray>("/env/play_reset/out", 1, std::bind(&BaselinePrecLandNode::play_reset_callback, this, _1));
             vehicle_odometry_subscriber = this->create_subscription<VehicleOdometry>("fmu/vehicle_odometry/out", 2, std::bind(&BaselinePrecLandNode::vehicle_odometry_callback, this, _1));
 
             timesync_sub_ = this->create_subscription<Timesync>(

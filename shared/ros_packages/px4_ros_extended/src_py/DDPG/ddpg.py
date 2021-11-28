@@ -1,5 +1,6 @@
 from __future__ import division
 import os
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.autograd import Variable
@@ -9,7 +10,7 @@ from DDPG.model_paper import Critic, Actor
 
 
 class DDPG:
-    def __init__(self, state_dim, action_dim, ram, lr=0.001, gamma=0.99, tau=0.001, batch_size=128):
+    def __init__(self, state_dim, action_dim, ram, lr=0.001, gamma=0.99, tau=0.001, batch_size=128, epochs=3):
         """
         :param state_dim: Dimensions of state (int)
         :param action_dim: Dimension of action (int)
@@ -36,6 +37,7 @@ class DDPG:
         self.gamma = gamma
         self.tau = tau
         self.batch_size = batch_size
+        self.epochs = epochs
         
         self.path_models = "/src/shared/models"
         if not os.path.isdir(self.path_models):
@@ -67,35 +69,47 @@ class DDPG:
         Samples a random batch from replay memory and performs optimization
         :return:
         """
-        s1, a1, r1, s2 = self.ram.sample(self.batch_size)
+        for j in range(self.epochs):
+            tot_loss_critic = 0.0
+            tot_loss_actor = 0.0
+            s1_tot, a1_tot, r1_tot, s2_tot = self.ram.sample(len(self.ram.buffer))
+            for i in range(int(len(s1_tot)/self.batch_size)):
+                s1 = np.array(s1_tot)[i*self.batch_size:i*self.batch_size+self.batch_size]
+                a1 = np.array(a1_tot)[i*self.batch_size:i*self.batch_size+self.batch_size]
+                r1 = np.array(r1_tot)[i*self.batch_size:i*self.batch_size+self.batch_size]
+                s2 = np.array(s2_tot)[i*self.batch_size:i*self.batch_size+self.batch_size]
 
-        s1 = Variable(torch.from_numpy(s1))
-        a1 = Variable(torch.from_numpy(a1))
-        r1 = Variable(torch.from_numpy(r1))
-        s2 = Variable(torch.from_numpy(s2))
+                s1 = Variable(torch.Tensor(s1))
+                a1 = Variable(torch.Tensor(a1))
+                r1 = Variable(torch.Tensor(r1))
+                s2 = Variable(torch.Tensor(s2))
 
-        # ---------------------- optimize critic ----------------------
-        # Use target actor exploitation policy here for loss evaluation
-        a2 = self.target_actor.forward(s2).detach()
-        next_val = torch.squeeze(self.target_critic.forward(s2, a2).detach())
-        # y_exp = r + gamma*Q'( s2, pi'(s2))
-        y_expected = r1 + self.gamma * next_val
-        # y_pred = Q( s1, a1)
-        y_predicted = torch.squeeze(self.critic.forward(s1, a1))
-        # compute critic loss, and update the critic
-        loss_critic = F.smooth_l1_loss(y_predicted, y_expected)
-        self.critic_optimizer.zero_grad()
-        loss_critic.backward()
-        self.critic_optimizer.step()
+                # ---------------------- optimize critic ----------------------
+                # Use target actor exploitation policy here for loss evaluation
+                a2 = self.target_actor.forward(s2).detach()
+                next_val = torch.squeeze(self.target_critic.forward(s2, a2).detach())
+                # y_exp = r + gamma*Q'( s2, pi'(s2))
+                y_expected = r1 + self.gamma * next_val
+                # y_pred = Q( s1, a1)
+                y_predicted = torch.squeeze(self.critic.forward(s1, a1))
+                # compute critic loss, and update the critic
+                loss_critic = F.smooth_l1_loss(y_predicted, y_expected)
+                self.critic_optimizer.zero_grad()
+                loss_critic.backward()
+                self.critic_optimizer.step()
 
-        # ---------------------- optimize actor ----------------------
-        pred_a1 = self.actor.forward(s1)
-        loss_actor = -1*torch.sum(self.critic.forward(s1, pred_a1))
-        self.actor_optimizer.zero_grad()
-        loss_actor.backward()
-        self.actor_optimizer.step()
-        
-        print("Loss Critic: " + str(loss_critic.item()) + " Loss Actor: " + str(loss_actor.item()))
+                # ---------------------- optimize actor ----------------------
+                pred_a1 = self.actor.forward(s1)
+                loss_actor = -1*torch.sum(self.critic.forward(s1, pred_a1))
+                self.actor_optimizer.zero_grad()
+                loss_actor.backward()
+                self.actor_optimizer.step()
+
+                tot_loss_critic += loss_critic.item()
+                tot_loss_actor += loss_actor.item()
+
+            print("Epoch: " + str(j) + " Loss Critic: " + str(tot_loss_critic/self.epochs) + " Loss Actor: "
+                  + str(tot_loss_actor/self.epochs))
 
         utils.soft_update(self.target_actor, self.actor, self.tau)
         utils.soft_update(self.target_critic, self.critic, self.tau)
