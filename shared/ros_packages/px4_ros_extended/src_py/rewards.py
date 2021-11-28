@@ -5,11 +5,9 @@ import numpy as np
 class Reward:
     def __init__(self, max_height, max_side):
         self.min_reward = -1
-        # Weights for pos, velocity, action, 2|3 x single action
-        self.coeffs = np.array([-10, -1, -0.1, 1, 1])  # x10 paper
-        self.coeffs_1 = np.array([-10, -1, -0.1, 1, 1, 1])
-        self.stop_reward_paper = 100.0
-        self.stop_reward = 10.0
+        # Weights for pos, velocity, action, 2 x single action
+        self.coeffs = np.array([-100, -10, -1, 10, 10])
+        self.stop_reward = 100.0
         self.previous_shaping = 0.0
         
         self.max_height = max_height

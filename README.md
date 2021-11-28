@@ -8,6 +8,7 @@ This repository is a work in progress, at the moment almost nothing works, take 
 2. [Usage](#usage)
     1. [Train](#train)
     2. [Test](#test)
+    3. [Speed-up](#speed)
 3. [References](#references)
 
 ## Setup <a name="setup"></a>
@@ -50,13 +51,13 @@ cd /src/shared/PX4-Autopilot/
 HEADLESS=1 make px4_sitl_rtps gazebo
 ```
 
-### Train <a name="train"></a>
-Open a terminal and divide it with "tmux" in 4 command lines or open 4 terminals and run the docker in each one of them, as explained above.
-
 Once gazebo is started, in a new terminal run 
 ```
 micrortps_agent -t UDP
 ```
+
+### Train <a name="train"></a>
+Open a terminal and divide it with "tmux" in 4 command lines or open 4 terminals and run the docker in each one of them, as explained above.
 
 Then in the other two windows run:
 ```
@@ -66,11 +67,6 @@ ros2 run px4_ros_extended <ddpg | ppo>_agent.py
 
 ### Test <a name="test"></a>
 Open a terminal and divide it with "tmux" in 5 command lines or open 5 terminals and run the docker in each one of them, as explained above.
-
-Once gazebo is started, in a new terminal run 
-```
-micrortps_agent -t UDP
-```
 
 #### Baseline
 Then takeoff with:
@@ -85,6 +81,15 @@ ros2 run px4_ros_extended baseline_prec_land
 
 #### Agent
 
+
+### Speed-up <a name="speed"></a>
+In order to speed-up the simulation one can start it with these commands:
+```
+PX4_SIM_SPEED_FACTOR=2 HEADLESS=1 make px4_sitl_rtps gazebo
+micrortps_agent -t UDP
+ros2 run px4_ros_extended <ddpg | ppo>_agent.py -p /use_sim_time:=true
+ros2 run px4_ros_extended env -p /use_sim_time:=true
+```
 
 ## References <a name="references"></a>
 The code for the PPO algoritm and the memory has been taken from [this](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail) github repository.
