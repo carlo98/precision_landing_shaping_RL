@@ -1,17 +1,19 @@
 # General
 action_space: 2
 obs_shape: 6
-lr: 0.003
+lr: 0.001
 num-env-steps: 1000000
 train_freq: 500  # It has to be a multiple of num_steps
 num-steps: 500
 seed: 5
 max_memory_len: 10000
+mem_to_use: 2048  # Try to keep this a multiple of the batch size
 log_interval_episodes: 10
 max_height: 5.0
 max_side: 5.0
 max_vel_z: 2.0
 max_vel_xy: 2.0
+train_window_reward: 50
 
 # PPO
 clip_param: 0.1
@@ -24,7 +26,7 @@ gae_lambda: 0.95
 num-processes: 4
 
 # DDPG
-epochs: 5
+epochs: 10
 batch_size: 256
 gamma: 0.99
 tau: 0.001

@@ -7,10 +7,14 @@ import os
 
 
 class Memory:
-    def __init__(self, size):
+    def __init__(self, size, train_window_reward):
         self.buffer = deque(maxlen=size)
+        self.mean_rewards = []
+        self.std_rewards = []
+        self.rewards_window = []
+        self.train_window_reward = train_window_reward
         self.maxSize = size
-        self.len = 0
+        self.length = 0
         
         self.path_logs = "/src/shared/logs"
         if not os.path.isdir(self.path_logs):
@@ -18,12 +22,13 @@ class Memory:
             self.id_file = 0
         else:
             max_folder = -1
-            regex_folder_name = re.compile("^[0-9]*$")
+            regex_folder_name = re.compile("^log_[0-9]*.pkl$")
             for folder in os.listdir(self.path_logs):
                 if regex_folder_name.match(folder) is not None:
-                    tmp = int(folder)
-                    if tmp > max_folder:
-                        max_folder = tmp
+                    end = folder.split("_")[1]
+                    number = int(end.split(".")[0])
+                    if number > max_folder:
+                        max_folder = number
             self.id_file = max_folder + 1
 
     def sample(self, count):
@@ -32,7 +37,7 @@ class Memory:
         :param count: batch size
         :return: batch (numpy array)
         """
-        count = min(count, self.len)
+        count = min(count, self.length)
         batch = random.sample(self.buffer, count)
 
         s_arr = np.float32([arr[0] for arr in batch])
@@ -43,12 +48,12 @@ class Memory:
         return s_arr, a_arr, r_arr, s1_arr
 
     def len(self):
-        return self.len
+        return self.length
         
     def log(self):
         filename = '/log_' + str(self.id_file) + ".pkl"
         with open(self.path_logs+filename, "wb") as pkl_f:
-            pickle.dump(self.buffer, pkl_f)
+            pickle.dump([self.mean_rewards, self.std_rewards], pkl_f)
 
     def add(self, s, a, r, s1, le):
         """
@@ -61,9 +66,17 @@ class Memory:
         :return:
         """
         transition = (s, a, r, s1, le)
-        if self.len > self.maxSize:
-            self.len = self.maxSize
+        if self.length >= self.maxSize:
+            self.length = self.maxSize
         else:
-            self.len += 1
+            self.length += 1
         self.buffer.append(transition)
+        
+        self.rewards_window.append(r)
+        if len(self.rewards_window) == self.train_window_reward:  # Mean and std of rewards window
+            rewards = np.array(self.rewards_window)
+            self.rewards_window = []
+            
+            self.mean_rewards.append(rewards.mean())
+            self.std_rewards.append(rewards.std())
 

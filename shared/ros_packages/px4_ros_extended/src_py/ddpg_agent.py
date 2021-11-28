@@ -30,7 +30,7 @@ class AgentNode:
 
         self.env = EnvWrapperNode(node, self.info_dict['max_height'], self.info_dict['max_side'],
                                   self.info_dict['max_vel_z'], self.info_dict['max_vel_xy'])
-        self.memory = Memory(self.info_dict['max_memory_len'])
+        self.memory = Memory(self.info_dict['max_memory_len'], self.info_dict['train_window_reward'])
         self.ddpg = DDPG(self.info_dict['obs_shape'], self.info_dict['action_space'], self.memory,
                          lr=self.info_dict['lr'], gamma=self.info_dict['gamma'],
                          tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'],
@@ -77,14 +77,16 @@ class AgentNode:
                 print("Position x: " + str(-inputs[0]) + " y: " + str(-inputs[1]) + " z: " + str(-inputs[2]))
                 print("Mean reward: " + str(episode_tot_reward / episode_steps) + " Time: " + str(time.time()-start_time_episode))
                 self.env.reset_env()
-                if self.cont_steps % self.info_dict['train_freq'] == 0:
+                if self.cont_steps % self.info_dict['train_freq'] == 0 and self.memory.len() >= self.info_dict['mem_to_use']:
                     print("Training...")
-                    self.ddpg.optimize()
+                    self.ddpg.optimize(self.info_dict['mem_to_use'])
                     print("Training ended")
                     
                 if self.cont_steps % self.num_log_episodes == 0:
-                    print("Saving in memory file.")
+                    print("Saving mean and std of rewards in file.")
                     self.memory.log()
+                    print("Saving model.")
+                    self.ddpg.save_models(self.cont_steps)
                 print()
                     
                 self.env.play_env()  # Restart landing listening, after training

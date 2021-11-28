@@ -7,3 +7,4 @@ PX4-Autopilot
 .idea
 logs
 models
+.ipynb_checkpoints
