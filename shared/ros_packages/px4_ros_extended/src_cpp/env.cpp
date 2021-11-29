@@ -60,13 +60,32 @@ class EnvNode : public rclcpp::Node {
 		            this->arm();
 		            usleep(1000000);
                 }
-                
+
 		        if(this->play==1 && this->reset==0) {  // Listen to actions
 		            this->agent_odom_pub();
                     this->land();
+                    if(this->w_vx == 0.0 && this->w_vy == 0.0 && this->w_vz == 0.0){
+                        this->cont_empty_actions += 1;
+                    }
+                    if(cont_empty_actions>=100){
+                        this->int64Msg.data = 1;
+                        this->agent_action_received_publisher_->publish(this->int64Msg);
+                        this->cont_empty_actions = 0;
+                    }
                 }
-                else if(this->play==0) {  // Go to new position or hover (avoids failsafe activation)
+                else if(this->play==0 && this->reset==1) {  // Go to new position or hover (avoids failsafe activation)
                     this->takeoff(this->w_x, this->w_y, this->w_z);
+                }
+                else if(this->play==0 && this->reset==0) {
+                    this->int64Msg.data = 1;
+                    this->agent_action_received_publisher_->publish(this->int64Msg);
+
+                    this->float32Vector.clear();
+                    this->float32Vector.push_back(0);  // Play, do not care, just listen to this
+                    this->float32Vector.push_back(0);  // Reset
+
+                    this->float32Msg.data = this->float32Vector;
+                    this->play_reset_publisher->publish(this->float32Msg);
                 }
                 
                 if(this->offboard_setpoint_counter_ <= 30) {
@@ -118,6 +137,7 @@ class EnvNode : public rclcpp::Node {
         float w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_xy-0.0)));
         float w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_xy-0.0)));
         float w_z = min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_z-min_z)));
+        int cont_empty_actions = 0;
 
         void publish_vehicle_command(uint16_t command, float param1 = 0.0, float param2 = 0.0) const;
         void publish_trajectory_setpoint_vel(float vx, float vy, float vz, float yawspeed) const;

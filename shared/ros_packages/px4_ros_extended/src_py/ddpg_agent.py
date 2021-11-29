@@ -75,7 +75,7 @@ class AgentNode:
             
             inputs, reward, done = self.env.act(action, self.normalize_input)
 
-            self.previous_obs = normalized_input
+            self.previous_obs = np.copy(normalized_input)
             normalized_input = self.normalize_input(np.copy(inputs))
             
             if episode_steps > 1:
@@ -94,8 +94,7 @@ class AgentNode:
                 print("Acc reward: " + str(episode_tot_reward) + " Time: " + str(time.time()-start_time_episode))
                 
                 self.env.reset_env()
-                if self.cont_steps % self.info_dict['train_freq'] == 0 \
-                        and self.memory.len() >= self.info_dict['mem_to_use']:
+                if episode_num % self.info_dict['train_freq'] == 0 and self.memory.len() >= self.info_dict['mem_to_use']:
                     print("Training...")
                     self.ddpg.optimize(self.info_dict['mem_to_use'])
                     print("Training ended")

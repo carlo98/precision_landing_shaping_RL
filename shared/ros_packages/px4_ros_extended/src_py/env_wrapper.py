@@ -53,6 +53,7 @@ class EnvWrapperNode:
             action_msg.data = [-action[0] * self.max_vel_xy, -action[1] * self.max_vel_xy, -vel_z]  # Fixed z velocity
             self.agent_vel_publisher.publish(action_msg)
 
+            self.action_received = False  # Avoid errors due to duplicates(used to compensate unreliable network)
             while not self.action_received:  # Wait for confirmation from environment
                 pass
             self.state = np.zeros(self.state_shape)
@@ -60,7 +61,7 @@ class EnvWrapperNode:
                 pass
 
         new_state = np.copy(self.state)
-        reward, done = self.reward.get_reward(new_state, normalize(new_state), action, self.eps_pos_z, self.eps_pos_xy, self.eps_vel_xy)
+        reward, done = self.reward.get_reward(new_state, normalize(np.copy(new_state)), action, self.eps_pos_z, self.eps_pos_xy, self.eps_vel_xy)
 
         self.action_received = False
         return new_state, reward, done
@@ -79,20 +80,32 @@ class EnvWrapperNode:
         self.reset = True
         self.play = False
 
+        cont = 0  # Compensate unreliable network
         while self.reset:  # Wait for takeoff completion
-            pass
+            cont += 1
+            if cont >= 1000000000000:
+                print("\t\tDebug Unreliable Network: env_wrapper/reset_env")
+                self.play_reset_publisher.publish(play_reset_msg)
+                cont = 0
             
     def play_env(self):  # Used for synchronization with gazebo
         play_reset_msg = Float32MultiArray()
         play_reset_msg.data = [1.0, 0.0]
-        self.reward.init_shaping(self.state)  # Initialising shaping for reward
+        # self.reward.init_shaping(self.state)  # Initialising shaping for reward
         self.play_reset_publisher.publish(play_reset_msg)
         self.play = True
 
+        cont = 0  # Compensate unreliable network
+        self.state = np.zeros(self.state_shape)
         while (self.state == 0).all():  # Wait for first message to arrive
-            pass
+            cont += 1
+            if cont >= 100:
+                self.play_reset_publisher.publish(play_reset_msg)
+                cont = 0
+
         return np.copy(self.state)
         
     def play_reset_callback(self, msg):  # Used for synchronization with gazebo
         if msg.data[1] == 0:
             self.reset = False
+

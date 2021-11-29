@@ -2,10 +2,10 @@
 action_space: 2
 obs_shape: 5
 num_env_episodes: 6000
-train_freq: 900  # It has to be a multiple of num_steps
-num-steps: 900
+train_freq: 1  # In episodes
+num-steps: 500
 seed: 5
-max_memory_len: 1800
+max_memory_len: 3000
 mem_to_use: 1024  # Try to keep this a multiple of the batch size
 log_interval_episodes: 10
 max_height: 3.0
@@ -18,7 +18,7 @@ evaluate_freq: 500
 evaluate_ep: 10
 
 # DDPG
-epochs: 10
+epochs: 1
 batch_size: 64
 gamma: 0.99
 tau: 0.001

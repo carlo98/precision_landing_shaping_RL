@@ -33,15 +33,14 @@ class Reward:
             print("Outside of area.")
             done = True
 
-        # Slowly Landed in wrong place
-        elif (np.abs(obs[2]) <= eps_pos_z and np.abs(obs[3]) <= eps_vel_xy and np.abs(obs[4]) <= eps_vel_xy) \
-                and (np.abs(obs[0]) > eps_pos_xy or np.abs(obs[1]) > eps_pos_xy):
-            print("Slowly Landed in wrong place.")
+        # Landed in wrong place
+        elif np.abs(obs[2]) <= eps_pos_z and (np.abs(obs[0]) > eps_pos_xy or np.abs(obs[1]) > eps_pos_xy):
+            print("Landed in wrong place.")
             done = True
             
         # Landed in obj
         elif np.abs(obs[2]) <= eps_pos_z and np.abs(obs[0]) <= eps_pos_xy and np.abs(obs[1]) <= eps_pos_xy:
-            print("Landed")
+            print("Fast Landing in obj")
             c = 1.0
             done = True
 
