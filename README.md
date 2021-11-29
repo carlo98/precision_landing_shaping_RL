@@ -92,6 +92,4 @@ ros2 run px4_ros_extended env -p /use_sim_time:=true
 ```
 
 ## References <a name="references"></a>
-The code for the PPO algoritm and the memory has been taken from [this](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail) github repository.
-
-The code for the DDPG algorithm has been taken from [this](https://github.com/vy007vikas/PyTorch-ActorCriticRL) github repository.
+The initial code for the DDPG algorithm has been taken from [this](https://github.com/vy007vikas/PyTorch-ActorCriticRL) github repository.

@@ -10,7 +10,7 @@ from DDPG.model_paper import Critic, Actor
 
 
 class DDPG:
-    def __init__(self, state_dim, action_dim, ram, lr=0.001, gamma=0.99, tau=0.001, batch_size=128, epochs=3):
+    def __init__(self, state_dim, action_dim, ram, lr_actor=0.0001, lr_critic=0.001, gamma=0.99, tau=0.001, batch_size=128, epochs=3):
         """
         :param state_dim: Dimensions of state (int)
         :param action_dim: Dimension of action (int)
@@ -25,11 +25,11 @@ class DDPG:
 
         self.actor = Actor(self.state_dim, self.action_dim).float()
         self.target_actor = Actor(self.state_dim, self.action_dim).float()
-        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr)
+        self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr_actor)
 
         self.critic = Critic(self.state_dim, self.action_dim).float()
         self.target_critic = Critic(self.state_dim, self.action_dim).float()
-        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr)
+        self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr_critic)
 
         utils.hard_update(self.target_actor, self.actor)
         utils.hard_update(self.target_critic, self.critic)

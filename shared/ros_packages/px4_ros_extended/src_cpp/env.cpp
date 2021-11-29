@@ -72,7 +72,7 @@ class EnvNode : public rclcpp::Node {
                     this->offboard_setpoint_counter_ += 1;
                 }
             };
-            timer_ = this->create_wall_timer(100ms, timer_callback);
+            timer_ = this->create_wall_timer(50ms, timer_callback);  // 20Hz
         }
 
         void arm() const;

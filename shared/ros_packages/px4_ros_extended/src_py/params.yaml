@@ -1,34 +1,26 @@
 # General
 action_space: 2
 obs_shape: 6
-lr: 0.001
-num-env-steps: 1000000
-train_freq: 5000  # It has to be a multiple of num_steps
-num-steps: 500
+num_env_episodes: 6000
+train_freq: 900  # It has to be a multiple of num_steps
+num-steps: 900
 seed: 5
-max_memory_len: 10000
-mem_to_use: 4096  # Try to keep this a multiple of the batch size
+max_memory_len: 1024
+mem_to_use: 512  # Try to keep this a multiple of the batch size
 log_interval_episodes: 10
 max_height: 5.0
 max_side: 5.0
-max_vel_z: 2.0
-max_vel_xy: 2.0
+max_vel_z: 1.0
+max_vel_xy: 1.0
 train_window_reward: 100
 test_window_reward: 3
+evaluate_freq: 500
 evaluate_ep: 10
-
-# PPO
-clip_param: 0.1
-value-loss-coef: 0.5
-num-mini-batch: 4
-use-linear-lr-decay: True
-entropy-coef: 0.01
-use_gae: True
-gae_lambda: 0.95
-num-processes: 4
 
 # DDPG
 epochs: 20
-batch_size: 256
+batch_size: 64
 gamma: 0.99
 tau: 0.001
+lr_actor: 0.0001
+lr_critic: 0.001
