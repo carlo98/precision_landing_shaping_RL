@@ -5,10 +5,10 @@ num_env_episodes: 6000
 train_freq: 900  # It has to be a multiple of num_steps
 num-steps: 900
 seed: 5
-max_memory_len: 1024
-mem_to_use: 512  # Try to keep this a multiple of the batch size
+max_memory_len: 1800
+mem_to_use: 1024  # Try to keep this a multiple of the batch size
 log_interval_episodes: 10
-max_height: 5.0
+max_height: 3.0
 max_side: 5.0
 max_vel_z: 1.0
 max_vel_xy: 1.0
@@ -18,7 +18,7 @@ evaluate_freq: 500
 evaluate_ep: 10
 
 # DDPG
-epochs: 20
+epochs: 10
 batch_size: 64
 gamma: 0.99
 tau: 0.001

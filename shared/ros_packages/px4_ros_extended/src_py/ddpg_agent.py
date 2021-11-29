@@ -48,6 +48,7 @@ class AgentNode:
         episode_tot_reward = 0.0
         episode_num = 0
         cont_test = 0
+        episode_steps = 0
 
         inputs = self.env.state
         self.previous_obs = np.copy(inputs)
@@ -64,6 +65,8 @@ class AgentNode:
             if cont_test >= self.info_dict['evaluate_ep']:
                 cont_test = 0
             
+            episode_steps += 1
+            
             with torch.no_grad():
                 normalized_input = self.normalize_input(np.copy(inputs))
                 
@@ -73,16 +76,17 @@ class AgentNode:
                 else:
                     action = self.ddpg.get_exploration_action(normalized_input)
             
-            inputs, reward, done = self.env.act(action)
+            inputs, reward, done = self.env.act(action, inputs, normalized_input)
             normalized_input = self.normalize_input(np.copy(inputs))
-            episode_tot_reward += reward
+            
+            if episode_steps > 1:
+                episode_tot_reward += reward
+                self.memory.add(self.previous_obs, action, reward, normalized_input, episode_num)
 
-            self.memory.add(self.previous_obs, action, reward, normalized_input, episode_num)
-
-            if (self.cont_steps % self.info_dict['num-steps'] == 0 and self.cont_steps > 0) or done:
+            if (self.cont_steps % self.info_dict['num-steps'] == 0 and self.cont_steps > 0 and episode_steps > 1) or done:
                 self.memory.add_acc_reward(episode_tot_reward, episode_num, self.info_dict['evaluate_freq'])
                 if done:
-                    print("Done")
+                    print("Done " + str(episode_num))
                 else:
                     print("End episode " + str(episode_num))
                 if evaluating:
@@ -106,11 +110,16 @@ class AgentNode:
                     
                 episode_tot_reward = 0.0
                 episode_num += 1
+                episode_steps = 0
+                
+                inputs = self.env.state
+                self.previous_obs = self.normalize_input(np.copy(inputs))
                 self.env.play_env()  # Restart landing listening, after training
                 start_time_episode = time.time()
+            else:
+                self.previous_obs = normalized_input
+                inputs = self.env.state
                 
-            self.previous_obs = normalized_input
-            inputs = self.env.state
             self.cont_steps += 1
 
         print("Saving model...\nTotal time: ", time.time()-self.start_time)

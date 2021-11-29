@@ -31,7 +31,7 @@ class EnvWrapperNode:
 
         self.action_received = False
         self.timestamp_ = 0.0
-        self.state = self.previous_state = np.zeros(6)
+        self.state = np.zeros(6)
         self.collision = False
         self.reset = True
         self.play = False
@@ -50,21 +50,21 @@ class EnvWrapperNode:
     def timestamp_callback(self, msg):
         self.timestamp_ = msg.timestamp
 
-    def act(self, action):
+    def act(self, action, normalize):
 
         if not self.collision:
             action_msg = Float32MultiArray()
-            action_msg.data = [action[0] * self.max_vel_xy, action[1] * self.max_vel_xy, -0.8*np.abs(self.state[2])]  # Fixed z velocity
+            action_msg.data = [-action[0] * self.max_vel_xy, -action[1] * self.max_vel_xy, -0.6*np.abs(self.state[2])]  # Fixed z velocity
             self.agent_vel_publisher.publish(action_msg)
 
             while not self.action_received:  # Wait for confirmation from environment
                 pass
 
-        reward, done = self.reward.get_reward(self.state, action, self.eps_pos_z, self.eps_pos_xy, self.eps_vel_xy)
+        new_state = self.state
+        reward, done = self.reward.get_reward(new_state, normalize(new_state), action, self.eps_pos_z, self.eps_pos_xy, self.eps_vel_xy)
 
-        self.previous_state = np.copy(self.state)
         self.action_received = False
-        return self.state, reward, done
+        return new_state, reward, done
 
     def action_received_callback(self, msg):
         self.action_received = msg
@@ -86,7 +86,6 @@ class EnvWrapperNode:
     def play_env(self):  # Used for synchronization with gazebo
         play_reset_msg = Float32MultiArray()
         play_reset_msg.data = [1.0, 0.0]
-        self.previous_state = np.copy(self.state)  # Reset previous state
         self.reward.init_shaping(self.state)  # Initialising shaping for reward
         self.play_reset_publisher.publish(play_reset_msg)
         self.play = True
