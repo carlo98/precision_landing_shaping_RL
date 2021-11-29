@@ -7,12 +7,16 @@ import os
 
 
 class Memory:
-    def __init__(self, size, train_window_reward):
+    def __init__(self, size, train_window_reward, test_window_reward):
         self.buffer = deque(maxlen=size)
-        self.mean_rewards = []
-        self.std_rewards = []
-        self.rewards_window = []
+        self.mean_rewards_train = []
+        self.std_rewards_train = []
+        self.mean_rewards_test = []
+        self.std_rewards_test = []
+        self.rewards_window_train = []
+        self.rewards_window_test = []
         self.train_window_reward = train_window_reward
+        self.test_window_reward = test_window_reward
         self.maxSize = size
         self.length = 0
         
@@ -53,9 +57,9 @@ class Memory:
     def log(self):
         filename = '/log_' + str(self.id_file) + ".pkl"
         with open(self.path_logs+filename, "wb") as pkl_f:
-            pickle.dump([self.mean_rewards, self.std_rewards], pkl_f)
+            pickle.dump([self.mean_rewards_train, self.std_rewards_train, self.mean_rewards_test, self.std_rewards_test], pkl_f)
 
-    def add(self, s, a, r, s1, le):
+    def add(self, s, a, r, s1, le, f_eval):
         """
         adds a particular transaction in the memory buffer
         :param s: current state
@@ -63,6 +67,7 @@ class Memory:
         :param r: reward received
         :param s1: next state
         :param le: log episode id (int)
+        :param f_eval: frequency of evaluation
         :return:
         """
         transition = (s, a, r, s1, le)
@@ -72,11 +77,20 @@ class Memory:
             self.length += 1
         self.buffer.append(transition)
         
-        self.rewards_window.append(r)
-        if len(self.rewards_window) == self.train_window_reward:  # Mean and std of rewards window
-            rewards = np.array(self.rewards_window)
-            self.rewards_window = []
+        if le & f_eval == 0:
+            self.rewards_window_test.append(r)
+            if len(self.rewards_window_test) == self.test_window_reward:  # Mean and std of test rewards window
+                rewards = np.array(self.rewards_window_test)
+                self.rewards_window_test = []
             
-            self.mean_rewards.append(rewards.mean())
-            self.std_rewards.append(rewards.std())
+                self.mean_rewards_test.append(rewards.mean())
+                self.std_rewards_test.append(rewards.std())
+        else:
+            self.rewards_window_train.append(r)
+            if len(self.rewards_window_train) == self.train_window_reward:  # Mean and std of train rewards window
+                rewards = np.array(self.rewards_window_train)
+                self.rewards_window_train = []
+            
+                self.mean_rewards_train.append(rewards.mean())
+                self.std_rewards_train.append(rewards.std())
 

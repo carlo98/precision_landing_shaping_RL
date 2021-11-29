@@ -38,7 +38,7 @@ class EnvWrapperNode:
 
         self.eps_pos_z = 0.16  # Drone height in Gazebo ~0.11m
         self.eps_pos_xy = 0.30  # Drone can land on a 1x1 (m) target
-        self.eps_vel_xy = 0.1
+        self.eps_vel_xy = 0.15
         self.max_vel_z = max_vel_z
         self.max_vel_xy = max_vel_xy
 

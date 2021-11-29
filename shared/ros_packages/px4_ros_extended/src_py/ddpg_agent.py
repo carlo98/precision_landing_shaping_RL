@@ -30,7 +30,7 @@ class AgentNode:
 
         self.env = EnvWrapperNode(node, self.info_dict['max_height'], self.info_dict['max_side'],
                                   self.info_dict['max_vel_z'], self.info_dict['max_vel_xy'])
-        self.memory = Memory(self.info_dict['max_memory_len'], self.info_dict['train_window_reward'])
+        self.memory = Memory(self.info_dict['max_memory_len'], self.info_dict['train_window_reward'], self.info_dict['test_window_reward'])
         self.ddpg = DDPG(self.info_dict['obs_shape'], self.info_dict['action_space'], self.memory,
                          lr=self.info_dict['lr'], gamma=self.info_dict['gamma'],
                          tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'],
@@ -59,23 +59,31 @@ class AgentNode:
         start_time_episode = time.time()
 
         while self.cont_steps <= self.info_dict['num-env-steps']:
+            episode_num = int(self.cont_steps / self.info_dict['num-steps'])
             with torch.no_grad():
                 normalized_input = self.normalize_input(np.copy(inputs))
-                action = self.ddpg.get_exploration_action(normalized_input)
+                
+                if episode_num % self.info_dict['evaluate_ep'] == 0:  # Evaluate model
+                    action = self.ddpg.get_exploitation_action(normalized_input)
+                else:
+                    action = self.ddpg.get_exploration_action(normalized_input)
             
             inputs, reward, done = self.env.act(action)
             normalized_input = self.normalize_input(np.copy(inputs))
             episode_tot_reward += reward
 
-            self.memory.add(self.previous_obs, action, reward, normalized_input, int(self.cont_steps / self.info_dict['num-steps']))
+            self.memory.add(self.previous_obs, action, reward, normalized_input, episode_num, self.info_dict['evaluate_ep'])
 
             if (self.cont_steps % self.info_dict['num-steps'] == 0 and self.cont_steps > 0) or done:
                 if done:
                     print("Done")
                 else:
-                    print("End episode " + str(int(self.cont_steps / self.info_dict['num-steps'])))
+                    print("End episode " + str(episode_num))
+                if episode_num % self.info_dict['evaluate_ep'] == 0:
+                    print("Evaluation episode")
                 print("Position x: " + str(-inputs[0]) + " y: " + str(-inputs[1]) + " z: " + str(-inputs[2]))
                 print("Mean reward: " + str(episode_tot_reward / episode_steps) + " Time: " + str(time.time()-start_time_episode))
+                
                 self.env.reset_env()
                 if self.cont_steps % self.info_dict['train_freq'] == 0 and self.memory.len() >= self.info_dict['mem_to_use']:
                     print("Training...")
@@ -86,7 +94,7 @@ class AgentNode:
                     print("Saving mean and std of rewards in file.")
                     self.memory.log()
                     print("Saving model.")
-                    self.ddpg.save_models(self.cont_steps)
+                    self.ddpg.save_models(self.memory.id_file)
                 print()
                     
                 self.env.play_env()  # Restart landing listening, after training
@@ -100,7 +108,7 @@ class AgentNode:
             episode_steps += 1
 
         print("Saving model...\nTotal time: ", time.time()-self.start_time)
-        self.ddpg.save_models(self.cont_steps)
+        self.ddpg.save_models(self.memory.id_file)
 
     def normalize_input(self, inputs):
         inputs[:2] /= self.info_dict['max_side']
