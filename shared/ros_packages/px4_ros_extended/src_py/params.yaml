@@ -1,6 +1,6 @@
 # General
 action_space: 2
-obs_shape: 6
+obs_shape: 5
 num_env_episodes: 6000
 train_freq: 900  # It has to be a multiple of num_steps
 num-steps: 900

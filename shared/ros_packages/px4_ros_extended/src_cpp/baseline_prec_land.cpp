@@ -7,7 +7,6 @@
 
 #include "custom_msgs/msg/float32_multi_array.hpp"
 #include <px4_msgs/msg/timesync.hpp>
-#include <px4_msgs/msg/vehicle_odometry.hpp>
 
 
 using namespace std;
@@ -26,7 +25,7 @@ class BaselinePrecLandNode : public rclcpp::Node {
             pub_agent_vec = this->create_publisher<Float32MultiArray>("/agent/velocity", 1);
             play_reset_publisher = this->create_publisher<Float32MultiArray>("/env/play_reset/in", 1);
             play_reset_subscriber = this->create_subscription<Float32MultiArray>("/env/play_reset/out", 1, std::bind(&BaselinePrecLandNode::play_reset_callback, this, _1));
-            vehicle_odometry_subscriber = this->create_subscription<VehicleOdometry>("fmu/vehicle_odometry/out", 2, std::bind(&BaselinePrecLandNode::vehicle_odometry_callback, this, _1));
+            vehicle_odometry_subscriber = this->create_subscription<Float32MultiArray>("/agent/odom", 1, std::bind(&BaselinePrecLandNode::vehicle_odometry_callback, this, _1));
 
             timesync_sub_ = this->create_subscription<Timesync>(
                 "fmu/timesync/out", 2,
@@ -52,31 +51,31 @@ class BaselinePrecLandNode : public rclcpp::Node {
         rclcpp::TimerBase::SharedPtr timer_;
         rclcpp::Publisher<Float32MultiArray>::SharedPtr pub_agent_vec;
         rclcpp::Subscription<Timesync>::SharedPtr timesync_sub_;
-        rclcpp::Subscription<VehicleOdometry>::SharedPtr vehicle_odometry_subscriber;
+        rclcpp::Subscription<Float32MultiArray>::SharedPtr vehicle_odometry_subscriber;
         rclcpp::Publisher<Float32MultiArray>::SharedPtr play_reset_publisher;
         rclcpp::Subscription<Float32MultiArray>::SharedPtr play_reset_subscriber;
 
-        void vehicle_odometry_callback(const VehicleOdometry::SharedPtr msg);
+        void vehicle_odometry_callback(const Float32MultiArray::SharedPtr msg);
         void play_reset_callback(const Float32MultiArray::SharedPtr msg_float);
 
         std::atomic<uint64_t> timestamp_;
         
         float x_pos = 0.0;
         float y_pos = 0.0;
-        float z_pos = 0.0;
+        float z_pos = 0.11;  // Drone height ~ 0.10m
         float x_drone = 0.0;
         float y_drone = 0.0;
-        float z_drone = 0.11;  // Drone height ~ 0.10m
+        float z_drone = 0.0;
         int reset = 1;
         Float32MultiArray float32Msg = Float32MultiArray();
         std::vector<float> float32Vector = std::vector<float>(3);
 };
 
-void BaselinePrecLandNode::vehicle_odometry_callback(const VehicleOdometry::SharedPtr msg)
+void BaselinePrecLandNode::vehicle_odometry_callback(const Float32MultiArray::SharedPtr msg)
 {
-    this->z_drone = msg->z;
-    this->x_drone = msg->x;
-    this->y_drone = msg->y;
+    this->z_drone = msg->data[2];
+    this->x_drone = msg->data[0];
+    this->y_drone = msg->data[1];
 }
 
 void BaselinePrecLandNode::play_reset_callback(const Float32MultiArray::SharedPtr msg_float)

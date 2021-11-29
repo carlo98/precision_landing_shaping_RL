@@ -19,27 +19,28 @@ class Reward:
     def get_reward(self, obs, norm_obs, action, eps_pos_z, eps_pos_xy, eps_vel_xy):
         done = False
 
+        c = 0.0
         # Slowly Landed in objective
         if np.abs(obs[2]) <= eps_pos_z and np.abs(obs[3]) <= eps_vel_xy and np.abs(obs[4]) <= eps_vel_xy \
                 and np.abs(obs[0]) <= eps_pos_xy and np.abs(obs[1]) <= eps_pos_xy:
             print("Slowly Landed in obj.")
+            c = 1.0
             done = True
 
         # Outside of area
-        if np.abs(obs[2]) > self.max_height or np.abs(obs[0]) > self.max_side \
+        elif np.abs(obs[2]) > self.max_height or np.abs(obs[0]) > self.max_side \
                 or np.abs(obs[1]) > self.max_side:
             print("Outside of area.")
             done = True
 
         # Slowly Landed in wrong place
-        if (np.abs(obs[2]) <= eps_pos_z and np.abs(obs[3]) <= eps_vel_xy and np.abs(obs[4]) <= eps_vel_xy) \
+        elif (np.abs(obs[2]) <= eps_pos_z and np.abs(obs[3]) <= eps_vel_xy and np.abs(obs[4]) <= eps_vel_xy) \
                 and (np.abs(obs[0]) > eps_pos_xy or np.abs(obs[1]) > eps_pos_xy):
             print("Slowly Landed in wrong place.")
             done = True
             
-        c = 0.0
-        # Landed
-        if np.abs(obs[2]) <= eps_pos_z:
+        # Landed in obj
+        elif np.abs(obs[2]) <= eps_pos_z and np.abs(obs[0]) <= eps_pos_xy and np.abs(obs[1]) <= eps_pos_xy:
             print("Landed")
             c = 1.0
             done = True

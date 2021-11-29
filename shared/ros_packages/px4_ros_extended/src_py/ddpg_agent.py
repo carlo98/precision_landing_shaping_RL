@@ -28,7 +28,7 @@ class AgentNode:
         torch.manual_seed(self.info_dict['seed'])
         torch.cuda.manual_seed_all(self.info_dict['seed'])
 
-        self.env = EnvWrapperNode(node, self.info_dict['max_height'], self.info_dict['max_side'],
+        self.env = EnvWrapperNode(node, self.info_dict['obs_shape'], self.info_dict['max_height'], self.info_dict['max_side'],
                                   self.info_dict['max_vel_z'], self.info_dict['max_vel_xy'])
         self.memory = Memory(self.info_dict['max_memory_len'], self.info_dict['train_window_reward'], self.info_dict['test_window_reward'])
         self.ddpg = DDPG(self.info_dict['obs_shape'], self.info_dict['action_space'], self.memory,
@@ -50,14 +50,11 @@ class AgentNode:
         cont_test = 0
         episode_steps = 0
 
-        inputs = self.env.state
-        self.previous_obs = np.copy(inputs)
         while self.env.reset:  # Waiting for env to stop resetting
-            inputs = self.env.state
-            self.previous_obs = np.copy(inputs)
+            pass
+
+        inputs = self.env.play_env()  # Start landing listening in src_cpp/env.cpp
         self.previous_obs = self.normalize_input(np.copy(inputs))
-        
-        self.env.play_env()  # Start landing listening
         start_time_episode = time.time()
 
         while episode_num < self.info_dict['num_env_episodes']:
@@ -76,7 +73,9 @@ class AgentNode:
                 else:
                     action = self.ddpg.get_exploration_action(normalized_input)
             
-            inputs, reward, done = self.env.act(action, inputs, normalized_input)
+            inputs, reward, done = self.env.act(action, self.normalize_input)
+
+            self.previous_obs = normalized_input
             normalized_input = self.normalize_input(np.copy(inputs))
             
             if episode_steps > 1:
@@ -111,14 +110,10 @@ class AgentNode:
                 episode_tot_reward = 0.0
                 episode_num += 1
                 episode_steps = 0
-                
-                inputs = self.env.state
+
+                inputs = self.env.play_env()  # Restart landing listening, after training
                 self.previous_obs = self.normalize_input(np.copy(inputs))
-                self.env.play_env()  # Restart landing listening, after training
                 start_time_episode = time.time()
-            else:
-                self.previous_obs = normalized_input
-                inputs = self.env.state
                 
             self.cont_steps += 1
 
@@ -128,8 +123,7 @@ class AgentNode:
     def normalize_input(self, inputs):
         inputs[:2] /= self.info_dict['max_side']
         inputs[2] /= self.info_dict['max_height']
-        inputs[3:5] /= self.info_dict['max_vel_xy']
-        inputs[5] /= self.info_dict['max_vel_z']
+        inputs[3:] /= self.info_dict['max_vel_xy']
         return inputs
 
  

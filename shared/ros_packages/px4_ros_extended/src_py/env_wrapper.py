@@ -3,64 +3,63 @@ import numpy as np
 from rewards import Reward
 
 # ROS dep
-import rclpy
 from std_msgs.msg import Int64
-
-# PX4 msgs
-from px4_msgs.msg import VehicleOdometry
-from px4_msgs.msg import Timesync
 
 # Custom msgs
 from custom_msgs.msg import Float32MultiArray
 
 
 class EnvWrapperNode:
-    def __init__(self, node, max_height, max_side, max_vel_z, max_vel_xy):
+    def __init__(self, node, state_shape, max_height, max_side, max_vel_z, max_vel_xy):
         self.node = node
 
-        self.vehicle_odometry_subscriber = self.node.create_subscription(VehicleOdometry, 'fmu/vehicle_odometry/out',
+        self.vehicle_odometry_subscriber = self.node.create_subscription(Float32MultiArray, 'agent/odom',
                                                                          self.vehicle_odometry_callback, 1)
         self.agent_vel_publisher = self.node.create_publisher(Float32MultiArray, "/agent/velocity", 1)
         self.play_reset_publisher = self.node.create_publisher(Float32MultiArray, "/env/play_reset/in", 1)
-        self.play_reset_subscriber = self.node.create_subscription(Float32MultiArray, "/env/play_reset/out", self.play_reset_callback, 1)
+        self.play_reset_subscriber = self.node.create_subscription(Float32MultiArray, "/env/play_reset/out",
+                                                                   self.play_reset_callback, 1)
         self.agent_action_received_publisher = self.node.create_subscription(Int64, "/agent/action_received",
                                                                              self.action_received_callback, 1)
-        self.timesync_sub_ = self.node.create_subscription(Timesync, "fmu/timesync/out", self.timestamp_callback, 1)
 
         self.reward = Reward(max_height, max_side)
 
         self.action_received = False
         self.timestamp_ = 0.0
-        self.state = np.zeros(6)
+        self.state = np.zeros(state_shape)
         self.collision = False
         self.reset = True
         self.play = False
 
-        self.eps_pos_z = 0.16  # Drone height in Gazebo ~0.11m
-        self.eps_pos_xy = 0.30  # Drone can land on a 1x1 (m) target
-        self.eps_vel_xy = 0.15
+        self.eps_pos_z = 0.11  # Drone height in Gazebo ~0.11m
+        self.eps_pos_xy = 0.20  # Drone can land on a 1x1 (m) target
+        self.eps_vel_xy = 0.10
         self.max_vel_z = max_vel_z
         self.max_vel_xy = max_vel_xy
+        self.state_shape = state_shape
 
     def vehicle_odometry_callback(self, obs):
-        # obs.rollspeed, obs.pitchspeed, obs.yawspeed])
-        self.state = np.array([-obs.x, -obs.y, -obs.z, -obs.vx, -obs.vy, -obs.vz])
+        # 0--x, 1--y, 2--z, 3--vx, 4--vy
+        self.state = -np.array(obs.data)
         self.collision = self.check_collision()
-
-    def timestamp_callback(self, msg):
-        self.timestamp_ = msg.timestamp
 
     def act(self, action, normalize):
 
         if not self.collision:
+            vel_z = 0.6 if self.state[2] > 1.0 else 0.9*self.state[2]
+            if self.state[2]<=0.20:
+                vel_z = np.float64(self.state[2])
             action_msg = Float32MultiArray()
-            action_msg.data = [-action[0] * self.max_vel_xy, -action[1] * self.max_vel_xy, -0.6*np.abs(self.state[2])]  # Fixed z velocity
+            action_msg.data = [-action[0] * self.max_vel_xy, -action[1] * self.max_vel_xy, -vel_z]  # Fixed z velocity
             self.agent_vel_publisher.publish(action_msg)
 
             while not self.action_received:  # Wait for confirmation from environment
                 pass
+            self.state = np.zeros(self.state_shape)
+            while (self.state == 0).all():  # Wait for new state
+                pass
 
-        new_state = self.state
+        new_state = np.copy(self.state)
         reward, done = self.reward.get_reward(new_state, normalize(new_state), action, self.eps_pos_z, self.eps_pos_xy, self.eps_vel_xy)
 
         self.action_received = False
@@ -89,6 +88,10 @@ class EnvWrapperNode:
         self.reward.init_shaping(self.state)  # Initialising shaping for reward
         self.play_reset_publisher.publish(play_reset_msg)
         self.play = True
+
+        while (self.state == 0).all():  # Wait for first message to arrive
+            pass
+        return np.copy(self.state)
         
     def play_reset_callback(self, msg):  # Used for synchronization with gazebo
         if msg.data[1] == 0:
