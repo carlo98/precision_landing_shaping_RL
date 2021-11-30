@@ -58,7 +58,7 @@ class AgentNode:
         start_time_episode = time.time()
 
         while episode_num < self.info_dict['num_env_episodes']:
-            evaluating = episode_num != 0 and episode_num % self.info_dict['evaluate_freq'] == 0 and cont_test < self.info_dict['evaluate_ep']
+            evaluating = episode_num != 0 and (episode_num % self.info_dict['evaluate_freq'] == 0 or 0 < cont_test < self.info_dict['evaluate_ep'])
             if cont_test >= self.info_dict['evaluate_ep']:
                 cont_test = 0
             
@@ -71,7 +71,7 @@ class AgentNode:
                     cont_test += 1
                     action = self.ddpg.get_exploitation_action(normalized_input)
                 else:
-                    action = self.ddpg.get_exploration_action(normalized_input)
+                    action = self.ddpg.get_exploration_action(normalized_input, self.cont_steps)
             
             inputs, reward, done = self.env.act(action, self.normalize_input)
 
@@ -83,7 +83,7 @@ class AgentNode:
                 self.memory.add(self.previous_obs, action, reward, normalized_input, episode_num)
 
             if (self.cont_steps % self.info_dict['num-steps'] == 0 and self.cont_steps > 0 and episode_steps > 1) or done:
-                self.memory.add_acc_reward(episode_tot_reward, episode_num, self.info_dict['evaluate_freq'])
+                self.memory.add_acc_reward(episode_tot_reward, cont_test)
                 if done:
                     print("Done " + str(episode_num))
                 else:

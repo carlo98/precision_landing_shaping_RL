@@ -76,8 +76,8 @@ class Memory:
             self.length += 1
         self.buffer.append(transition)
 
-    def add_acc_reward(self, acc_r, le, f_eval):
-        if le & f_eval == 0:
+    def add_acc_reward(self, acc_r, cont_test):
+        if cont_test > 0:
             self.rewards_window_test.append(acc_r)
             if len(self.rewards_window_test) == self.test_window_reward:  # Mean and std of test rewards window
                 rewards = np.array(self.rewards_window_test)

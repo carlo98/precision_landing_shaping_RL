@@ -31,7 +31,7 @@ class EnvWrapperNode:
         self.reset = True
         self.play = False
 
-        self.eps_pos_z = 0.11  # Drone height in Gazebo ~0.11m
+        self.eps_pos_z = 0.12  # Drone height in Gazebo ~0.11m
         self.eps_pos_xy = 0.20  # Drone can land on a 1x1 (m) target
         self.eps_vel_xy = 0.10
         self.max_vel_z = max_vel_z
@@ -46,19 +46,27 @@ class EnvWrapperNode:
     def act(self, action, normalize):
 
         if not self.collision:
-            vel_z = 0.6 if self.state[2] > 1.0 else 0.9*self.state[2]
-            if self.state[2]<=0.20:
-                vel_z = np.float64(self.state[2])
+            vel_z = 0.6 if self.state[2] > 1.0 else 0.75*self.state[2]
             action_msg = Float32MultiArray()
             action_msg.data = [-action[0] * self.max_vel_xy, -action[1] * self.max_vel_xy, -vel_z]  # Fixed z velocity
             self.agent_vel_publisher.publish(action_msg)
 
             self.action_received = False  # Avoid errors due to duplicates(used to compensate unreliable network)
+            cont = 0
             while not self.action_received:  # Wait for confirmation from environment
-                pass
+                cont += 1
+                if cont >= 20000000:
+                    print("\t\tDebug Unreliable Network: env_wrapper/act action_received")
+                    self.agent_vel_publisher.publish(action_msg)
+                    cont = 0
+
+            cont = 0
             self.state = np.zeros(self.state_shape)
-            while (self.state == 0).all():  # Wait for new state
-                pass
+            while (self.state == 0).all():  # Wait for first message to arrive
+                cont += 1
+                if cont >= 20000000:
+                    print("\t\tDebug Unreliable Network: env_wrapper/act new_state")
+                    cont = 0
 
         new_state = np.copy(self.state)
         reward, done = self.reward.get_reward(new_state, normalize(np.copy(new_state)), action, self.eps_pos_z, self.eps_pos_xy, self.eps_vel_xy)
@@ -83,7 +91,7 @@ class EnvWrapperNode:
         cont = 0  # Compensate unreliable network
         while self.reset:  # Wait for takeoff completion
             cont += 1
-            if cont >= 1000000000000:
+            if cont >= 20000000:
                 print("\t\tDebug Unreliable Network: env_wrapper/reset_env")
                 self.play_reset_publisher.publish(play_reset_msg)
                 cont = 0
@@ -99,7 +107,8 @@ class EnvWrapperNode:
         self.state = np.zeros(self.state_shape)
         while (self.state == 0).all():  # Wait for first message to arrive
             cont += 1
-            if cont >= 100:
+            if cont >= 20000000:
+                print("\t\tDebug Unreliable Network: env_wrapper/play_env")
                 self.play_reset_publisher.publish(play_reset_msg)
                 cont = 0
 

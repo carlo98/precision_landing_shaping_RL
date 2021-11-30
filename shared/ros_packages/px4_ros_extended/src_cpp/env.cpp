@@ -67,16 +67,18 @@ class EnvNode : public rclcpp::Node {
                     if(this->w_vx == 0.0 && this->w_vy == 0.0 && this->w_vz == 0.0){
                         this->cont_empty_actions += 1;
                     }
-                    if(cont_empty_actions>=100){
+                    if(cont_empty_actions>=20000000){
                         this->int64Msg.data = 1;
                         this->agent_action_received_publisher_->publish(this->int64Msg);
                         this->cont_empty_actions = 0;
+                        RCLCPP_INFO(this->get_logger(), "\t\tDebug Unreliable Network: env/reset_0 play_1");
                     }
                 }
                 else if(this->play==0 && this->reset==1) {  // Go to new position or hover (avoids failsafe activation)
                     this->takeoff(this->w_x, this->w_y, this->w_z);
                 }
                 else if(this->play==0 && this->reset==0) {
+                    RCLCPP_INFO(this->get_logger(), "\t\tDebug Unreliable Network: env/reset_0 play_0");
                     this->int64Msg.data = 1;
                     this->agent_action_received_publisher_->publish(this->int64Msg);
 
@@ -86,6 +88,9 @@ class EnvNode : public rclcpp::Node {
 
                     this->float32Msg.data = this->float32Vector;
                     this->play_reset_publisher->publish(this->float32Msg);
+                }
+                else{
+                    RCLCPP_INFO(this->get_logger(), "\t\tDebug Unreliable Network: env/reset_1 play_1");
                 }
                 
                 if(this->offboard_setpoint_counter_ <= 30) {
@@ -243,13 +248,13 @@ void EnvNode::disarm() const
     publish_vehicle_command(VehicleCommand::VEHICLE_CMD_NAV_LAND, 0.0);
 	publish_vehicle_command(VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM, 0.0);
 
-	RCLCPP_INFO(this->get_logger(), "Disarm command send");
+	RCLCPP_INFO(this->get_logger(), "Disarm command sent");
 }
 
 void EnvNode::arm() const {
 	publish_vehicle_command(VehicleCommand::VEHICLE_CMD_COMPONENT_ARM_DISARM, 1.0);
 
-	RCLCPP_INFO(this->get_logger(), "Arm command send");
+	RCLCPP_INFO(this->get_logger(), "Arm command sent");
 }
 
 void EnvNode::publish_trajectory_setpoint_vel(float vx, float vy, float vz, float yawspeed) const

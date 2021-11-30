@@ -53,16 +53,17 @@ class DDPG:
         action = self.target_actor.forward(state).detach()
         return action.data.numpy()
 
-    def get_exploration_action(self, state):
+    def get_exploration_action(self, state, n_steps):
         """
         gets the action from actor added with exploration noise
         :param state: state (Numpy array)
+        :param n_steps: number of training steps, used to decrease exploration
         :return: sampled action (Numpy array)
         """
         state = Variable(torch.from_numpy(state).float())
         action = self.actor.forward(state).detach()
-        new_action = action.data.numpy() + self.noise.sample()
-        return new_action
+        new_action = action.data.numpy() + self.noise.sample(n_steps)
+        return np.clip(new_action, -1.0, 1.0)
 
     def optimize(self, mem_to_use):
         """
