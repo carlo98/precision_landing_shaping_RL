@@ -35,8 +35,6 @@ class AgentNode:
                          lr_actor=self.info_dict['lr_actor'], lr_critic=self.info_dict['lr_critic'], gamma=self.info_dict['gamma'],
                          tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'],
                          epochs=self.info_dict['epochs'])
-                         
-        self.num_log_episodes = self.info_dict['num-steps'] * self.info_dict['log_interval_episodes']
         
         self.cont_steps = 0
         self.previous_obs = np.zeros(self.info_dict['obs_shape'])
@@ -68,7 +66,6 @@ class AgentNode:
                 normalized_input = self.normalize_input(np.copy(inputs))
                 
                 if evaluating:  # Evaluate model
-                    cont_test += 1
                     action = self.ddpg.get_exploitation_action(normalized_input)
                 else:
                     action = self.ddpg.get_exploration_action(normalized_input, self.cont_steps)
@@ -90,6 +87,7 @@ class AgentNode:
                     print("End episode " + str(episode_num))
                 if evaluating:
                     print("Evaluation episode " + str(cont_test+1))
+                    cont_test += 1
                 print("Position x: " + str(-inputs[0]) + " y: " + str(-inputs[1]) + " z: " + str(-inputs[2]))
                 print("Acc reward: " + str(episode_tot_reward) + " Time: " + str(time.time()-start_time_episode))
                 
@@ -99,7 +97,7 @@ class AgentNode:
                     self.ddpg.optimize(self.info_dict['mem_to_use'])
                     print("Training ended")
                     
-                if self.cont_steps % self.num_log_episodes == 0:
+                if episode_num % self.info_dict['log_interval_episodes'] == 0:
                     print("Saving mean and std of rewards in file.")
                     self.memory.log()
                     print("Saving model.")
