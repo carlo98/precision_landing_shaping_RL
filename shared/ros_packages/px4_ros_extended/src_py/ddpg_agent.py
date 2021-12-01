@@ -80,7 +80,6 @@ class AgentNode:
                 self.memory.add(self.previous_obs, action, reward, normalized_input, episode_num)
 
             if (self.cont_steps % self.info_dict['num-steps'] == 0 and self.cont_steps > 0 and episode_steps > 1) or done:
-                self.memory.add_acc_reward(episode_tot_reward, cont_test)
                 if done:
                     print("Done " + str(episode_num))
                 else:
@@ -91,23 +90,24 @@ class AgentNode:
                 print("Position x: " + str(-inputs[0]) + " y: " + str(-inputs[1]) + " z: " + str(-inputs[2]))
                 print("Acc reward: " + str(episode_tot_reward) + " Time: " + str(time.time()-start_time_episode))
                 
+                self.memory.add_acc_reward(episode_tot_reward, cont_test)
                 self.env.reset_env()
                 if episode_num % self.info_dict['train_freq'] == 0 and self.memory.len() >= self.info_dict['mem_to_use']:
                     print("Training...")
                     self.ddpg.optimize(self.info_dict['mem_to_use'])
                     print("Training ended")
                     
-                if episode_num % self.info_dict['log_interval_episodes'] == 0:
+                if episode_num != 0 and episode_num % self.info_dict['log_interval_episodes'] == 0:
                     print("Saving mean and std of rewards in file.")
                     self.memory.log()
                     print("Saving model.")
                     self.ddpg.save_models(self.memory.id_file)
-                print()
                     
                 episode_tot_reward = 0.0
                 episode_num += 1
                 episode_steps = 0
 
+                print("\nStarting new episode\n")
                 inputs = self.env.play_env()  # Restart landing listening, after training
                 self.previous_obs = self.normalize_input(np.copy(inputs))
                 start_time_episode = time.time()

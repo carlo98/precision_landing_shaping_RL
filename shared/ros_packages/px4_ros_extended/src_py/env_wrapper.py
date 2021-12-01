@@ -4,6 +4,11 @@ from rewards import Reward
 
 # ROS dep
 from std_msgs.msg import Int64
+from std_srvs.srv import Empty
+from gazebo_msgs.msg import EntityState
+from gazebo_msgs.srv import SetEntityState
+from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Twist
 
 # Custom msgs
 from custom_msgs.msg import Float32MultiArray
@@ -31,9 +36,9 @@ class EnvWrapperNode:
         self.reset = True
         self.play = False
 
-        self.eps_pos_z = 0.12  # Drone height in Gazebo ~0.11m
-        self.eps_pos_xy = 0.20  # Drone can land on a 1x1 (m) target
-        self.eps_vel_xy = 0.10
+        self.eps_pos_z = 0.08
+        self.eps_pos_xy = 0.50  # Drone can land on a 1x1 (m) target
+        self.eps_vel_xy = 0.05
         self.max_vel_z = max_vel_z
         self.max_vel_xy = max_vel_xy
         self.state_shape = state_shape
@@ -46,27 +51,19 @@ class EnvWrapperNode:
     def act(self, action, normalize):
 
         if not self.collision:
-            vel_z = 0.6 if self.state[2] > 1.0 else 0.75*self.state[2]
+            vel_z = 0.6 if self.state[2] > 1.0 else 0.9*self.state[2]
+            if np.abs(self.state[2]) <= 0.25:
+                vel_z = np.float64(self.state[2])
             action_msg = Float32MultiArray()
             action_msg.data = [-action[0] * self.max_vel_xy, -action[1] * self.max_vel_xy, -vel_z]  # Fixed z velocity
             self.agent_vel_publisher.publish(action_msg)
 
-            self.action_received = False  # Avoid errors due to duplicates(used to compensate unreliable network)
-            cont = 0
             while not self.action_received:  # Wait for confirmation from environment
-                cont += 1
-                if cont >= 20000000:
-                    print("\t\tDebug Unreliable Network: env_wrapper/act action_received")
-                    self.agent_vel_publisher.publish(action_msg)
-                    cont = 0
+                pass
 
-            cont = 0
             self.state = np.zeros(self.state_shape)
             while (self.state == 0).all():  # Wait for first message to arrive
-                cont += 1
-                if cont >= 20000000:
-                    print("\t\tDebug Unreliable Network: env_wrapper/act new_state")
-                    cont = 0
+                pass
 
         new_state = np.copy(self.state)
         reward, done = self.reward.get_reward(new_state, normalize(np.copy(new_state)), action, self.eps_pos_z, self.eps_pos_xy, self.eps_vel_xy)
@@ -75,7 +72,7 @@ class EnvWrapperNode:
         return new_state, reward, done
 
     def action_received_callback(self, msg):
-        self.action_received = msg
+        self.action_received = msg.data == 1
 
     def check_collision(self):
         return self.play and np.abs(self.state[2]) <= self.eps_pos_z and \
@@ -83,18 +80,13 @@ class EnvWrapperNode:
 
     def reset_env(self):  # Used for synchronization with gazebo
         play_reset_msg = Float32MultiArray()
-        play_reset_msg.data = [0.0, 1.0]
+        play_reset_msg.data = [1.0, 1.0]
         self.play_reset_publisher.publish(play_reset_msg)
-        self.reset = True
-        self.play = False
 
-        cont = 0  # Compensate unreliable network
+        self.reset = True
         while self.reset:  # Wait for takeoff completion
-            cont += 1
-            if cont >= 20000000:
-                print("\t\tDebug Unreliable Network: env_wrapper/reset_env")
-                self.play_reset_publisher.publish(play_reset_msg)
-                cont = 0
+            pass
+        self.play = False
             
     def play_env(self):  # Used for synchronization with gazebo
         play_reset_msg = Float32MultiArray()
@@ -103,14 +95,9 @@ class EnvWrapperNode:
         self.play_reset_publisher.publish(play_reset_msg)
         self.play = True
 
-        cont = 0  # Compensate unreliable network
         self.state = np.zeros(self.state_shape)
         while (self.state == 0).all():  # Wait for first message to arrive
-            cont += 1
-            if cont >= 20000000:
-                print("\t\tDebug Unreliable Network: env_wrapper/play_env")
-                self.play_reset_publisher.publish(play_reset_msg)
-                cont = 0
+            pass
 
         return np.copy(self.state)
         
@@ -118,3 +105,47 @@ class EnvWrapperNode:
         if msg.data[1] == 0:
             self.reset = False
 
+    # The following methods are not used, because they create problems with PX4 calibration
+    """
+    def set_pose_model(self):
+        self.service_call("/pause_physics")
+        self.service_call_set_state("/demo/set_entity_state")  # or reset_world
+        self.service_call("/unpause_physics")
+
+    def service_call_set_state(self, name_service):
+        state_msg = EntityState()
+        pose_msg = Pose()
+        twist_msg = Twist()
+        pose_msg.position.x = 0.0
+        pose_msg.position.y = 0.0
+        pose_msg.position.z = -0.21
+        pose_msg.orientation.x = 0.0
+        pose_msg.orientation.y = 0.0
+        pose_msg.orientation.z = 0.0
+        pose_msg.orientation.w = 0.0
+        twist_msg.linear.x = 0.0
+        twist_msg.linear.y = 0.0
+        twist_msg.linear.z = 0.0
+        twist_msg.angular.x = 0.0
+        twist_msg.angular.y = 0.0
+        twist_msg.angular.z = 0.0
+        state_msg.name = 'iris'
+        state_msg.pose = pose_msg
+        state_msg.twist = twist_msg
+        respawn = self.node.create_client(SetEntityState, name_service)
+        while not respawn.wait_for_service(timeout_sec=1.0):
+            self.node.get_logger().info('service not available, waiting again...')
+        req = SetEntityState.Request(state=state_msg)
+        fut = respawn.call_async(req)
+        while not fut.done():
+            pass
+
+    def service_call(self, name_service):
+        respawn = self.node.create_client(Empty, name_service)
+        while not respawn.wait_for_service(timeout_sec=1.0):
+            self.node.get_logger().info('service not available, waiting again...')
+        req = Empty.Request()
+        fut = respawn.call_async(req)
+        while not fut.done():
+            pass
+   """
