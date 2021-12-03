@@ -15,7 +15,7 @@ max_vel_xy: 1.0
 train_window_reward: 100
 test_window_reward: 3
 evaluate_freq: 500
-evaluate_ep: 10
+evaluate_ep: 9  # Keep this a multiple of test_window_reward
 
 # DDPG
 epochs: 1

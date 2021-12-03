@@ -58,6 +58,8 @@ class OrnsteinUhlenbeckActionNoise:
 
     def sample(self, n_steps):
         dx = self.theta * (self.mu - self.X)
+        
+        # Coefficient for number of steps chosen in order to have noise in range -0.1 and 0.1 after 120k steps
         dx = dx + self.sigma * 0.999978**n_steps * np.random.randn(len(self.X))
         self.X = self.X + dx
         return self.X
