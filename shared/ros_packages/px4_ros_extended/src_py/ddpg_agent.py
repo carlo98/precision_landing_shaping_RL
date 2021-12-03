@@ -125,14 +125,14 @@ class AgentNode:
 
  
 def spin_thread(node):
-    node.spin()
+    rclpy.spin(node)
 
 
 if __name__ == '__main__':
     rclpy.init(args=None)
     m_node = rclpy.create_node('agent_node')
     gsNode = AgentNode(m_node)
-    x = threading.Thread(target=spin_thread, args=(gsNode.env,))
+    x = threading.Thread(target=spin_thread, args=(m_node,))
     x.start()
     gsNode.train()
     x.join()

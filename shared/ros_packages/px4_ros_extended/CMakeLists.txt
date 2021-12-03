@@ -50,7 +50,6 @@ install(PROGRAMS
     src_py/env_wrapper.py
     src_py/ddpg_agent.py
     src_py/gazebo_runner.py
-    src_py/micrortps_runner.py
     DESTINATION lib/${PROJECT_NAME}
 )
 

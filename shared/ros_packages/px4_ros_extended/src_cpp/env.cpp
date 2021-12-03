@@ -16,7 +16,6 @@
 #include <px4_msgs/msg/vehicle_control_mode.hpp>
 #include <px4_msgs/msg/offboard_control_mode.hpp>
 #include <px4_msgs/msg/vehicle_odometry.hpp>
-#include <px4_msgs/msg/vehicle_status.hpp>
 
 
 using namespace std;
@@ -36,13 +35,13 @@ class EnvNode : public rclcpp::Node {
             vehicle_command_publisher_ = this->create_publisher<VehicleCommand>("fmu/vehicle_command/in", 2);
             offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("fmu/offboard_control_mode/in", 2);
             odometry_subscriber = this->create_subscription<VehicleOdometry>("fmu/vehicle_odometry/out", 1, std::bind(&EnvNode::odometry_callback, this, _1));
-            status_subscriber = this->create_subscription<VehicleStatus>("/fmu/vehicle_status/out", 1, std::bind(&EnvNode::status_callback, this, _1));
             trajectory_setpoint_publisher_ = this->create_publisher<TrajectorySetpoint>("fmu/trajectory_setpoint/in", 2);
             agent_action_received_publisher_ = this->create_publisher<Int64>("/agent/action_received", 1);
             agent_subscriber = this->create_subscription<Float32MultiArray>("/agent/velocity", 1, std::bind(&EnvNode::agent_callback, this, _1));
             play_reset_subscriber = this->create_subscription<Float32MultiArray>("/env/play_reset/in", 1, std::bind(&EnvNode::play_reset_callback, this, _1));
             play_reset_publisher = this->create_publisher<Float32MultiArray>("/env/play_reset/out", 1);
             agent_odom_publisher = this->create_publisher<Float32MultiArray>("/agent/odom", 1);
+            resetting_subscriber = this->create_subscription<Int64>("/env/resetting", 1, std::bind(&EnvNode::resetting_callback, this, _1));
             
             srand (static_cast <unsigned> (time(0)));
 
@@ -63,20 +62,16 @@ class EnvNode : public rclcpp::Node {
 		            usleep(1000000);
                 }
 
-		        if(this->play==1 && this->reset==0) {  // Listen to actions
+		        if(this->play==1 && this->reset==0 && this->micrortps_connected) {  // Listen to actions
 		            this->agent_odom_pub();
                     this->land();
                 }
-                else if(this->play==0 && this->reset==1) {  // Go to new position or hover (avoids failsafe activation)
+                else if(this->play==0 && this->reset==1 && this->micrortps_connected) {  // Go to new position or hover (avoids failsafe activation)
                     if(this->offboard_setpoint_counter_ <= 30 && this->micrortps_connected) {
                         this->offboard_setpoint_counter_ += 1;
                     }
                     this->takeoff(this->w_x, this->w_y, this->w_z);
                     std::cout << this->x << " " << this->y << " "<< this->z << "\n";
-                }
-                else if(this->play==1 && this->reset==1 && this->takeoff_time == 0.0){  // Automatic landing and disarm performed by gazebo
-                    //this->disarm();
-                    this->new_position();
                 }
             };
             timer_ = this->create_wall_timer(50ms, timer_callback);  // 20Hz
@@ -91,7 +86,6 @@ class EnvNode : public rclcpp::Node {
         rclcpp::Publisher<VehicleCommand>::SharedPtr vehicle_command_publisher_;
         rclcpp::Subscription<Timesync>::SharedPtr timesync_sub_;
         rclcpp::Subscription<VehicleOdometry>::SharedPtr odometry_subscriber;
-        rclcpp::Subscription<VehicleStatus>::SharedPtr status_subscriber;
         rclcpp::Subscription<Float32MultiArray>::SharedPtr agent_subscriber;
         rclcpp::Publisher<Int64>::SharedPtr agent_action_received_publisher_;
         rclcpp::Publisher<OffboardControlMode>::SharedPtr offboard_control_mode_publisher_;
@@ -99,6 +93,7 @@ class EnvNode : public rclcpp::Node {
         rclcpp::Publisher<Float32MultiArray>::SharedPtr play_reset_publisher;
         rclcpp::Subscription<Float32MultiArray>::SharedPtr play_reset_subscriber;
         rclcpp::Publisher<Float32MultiArray>::SharedPtr agent_odom_publisher;
+        rclcpp::Subscription<Int64>::SharedPtr resetting_subscriber;
 
         std::atomic<uint64_t> timestamp_;
         Int64 int64Msg = Int64();
@@ -107,15 +102,10 @@ class EnvNode : public rclcpp::Node {
         int offboard_setpoint_counter_ = 0;
         float eps_pos = 0.15;  // Tolerance for position
         float eps_vel = 0.05;  // Tolerance for velocity
-        float vz = 0.0;
-        float vx = 0.0;
-        float vy = 0.0;
-        float w_vz = 0.0;
-        float w_vx = 0.0;
-        float w_vy = 0.0;
-        float z = 0.0;
-        float x = 0.0;
-        float y = 0.0;
+        float vx, vy, vz = 0.0;
+        float w_vx, w_vy, w_vz = 0.0;
+        float x, y, z = 0.0;
+        float prev_x, prev_y, prev_z = 0.0;
         int play = 0;  // if 1 listen to velocity from agent, 0 stop publish velocity
         int reset = 1;  // if 1 perform takeoff, 0 takeoff complete
         int max_z = 3.0;
@@ -124,7 +114,6 @@ class EnvNode : public rclcpp::Node {
         float w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_xy-0.0)));
         float w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_xy-0.0)));
         float w_z = min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_z-min_z)));
-        float takeoff_time = 0.0;
         bool micrortps_connected = false;  // Whether micrortps_agent and gazebo are ready or not
 
         void publish_vehicle_command(uint16_t command, float param1 = 0.0, float param2 = 0.0) const;
@@ -133,7 +122,7 @@ class EnvNode : public rclcpp::Node {
         void agent_callback(const Float32MultiArray::SharedPtr msg_float);
         void play_reset_callback(const Float32MultiArray::SharedPtr msg_float);
         void odometry_callback(const VehicleOdometry::SharedPtr msg);
-        void status_callback(const VehicleStatus::SharedPtr msg);
+        void resetting_callback(const Int64::SharedPtr msg);
         void agent_odom_pub();
         void publish_offboard_control_mode(bool pos, bool vel, bool acc, bool att, bool br) const;
         void new_position();
@@ -183,9 +172,16 @@ void EnvNode::play_reset_callback(const Float32MultiArray::SharedPtr msg_float)
         this->w_vx = 0.0;
         this->w_vy = 0.0;
         this->w_vz = 0.0;
-        this->micrortps_connected = false;
-        this->land();
+        this->new_position();
     }
+}
+
+void EnvNode::resetting_callback(const Int64::SharedPtr msg)
+{
+    if(this->micrortps_connected && msg->data == 1){
+        this->offboard_setpoint_counter_ = 0;
+    }
+    this->micrortps_connected = msg->data == 0;
 }
 
 void EnvNode::new_position(){
@@ -204,7 +200,7 @@ void EnvNode::new_position(){
         this->w_y = - 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
     }
     this->w_z = this->min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_z-this->min_z)));
-    //this->offboard_setpoint_counter_ = 0;
+
     this->reset = 1;
     this->play = 0;
 }
@@ -236,14 +232,6 @@ void EnvNode::odometry_callback(const VehicleOdometry::SharedPtr msg)
     this->vx = msg->vx;
     this->vy = msg->vy;
     this->vz = msg->vz;
-
-    if(!this->micrortps_connected && this->x != 0 && this->y != 0 && this->z != 0) {
-        this->micrortps_connected = true;
-    }
-}
-
-void EnvNode::status_callback(const VehicleStatus::SharedPtr msg){
-    this->takeoff_time = msg->takeoff_time;
 }
 
 void EnvNode::disarm() const
