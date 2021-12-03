@@ -5,19 +5,24 @@ This repository is a work in progress, at the moment almost nothing works, take 
 
 # Table of contents
 1. [Setup](#setup)
+   1. [PX4-Autopilot](#px4)
+   2. [Docker Build](#docker)
 2. [Usage](#usage)
-    1. [Train](#train)
-    2. [Test](#test)
-    3. [Speed-up](#speed)
+   1. [Train](#train)
+   2. [Test](#test)
+   3. [Speed-up](#speed)
 3. [References](#references)
 
 ## Setup <a name="setup"></a>
+
+### PX4 Autopilot <a name="px4"></a>
 Clone [PX4-AutoPilot](https://github.com/PX4/PX4-Autopilot) in the "shared" folder.
 ```
 cd shared
 git clone https://github.com/PX4/PX4-Autopilot.git
 ```
 
+### Docker Build <a name="docker"></a>
 Modify the absolute paths in "run_docker.sh" to reflect the position of the repository on your computer.
 
 Build and start the docker, it will take same time:
@@ -45,29 +50,27 @@ cd /src/shared/PX4-Autopilot/
 make px4_sitl_rtps gazebo
 ```
 
-To start Gazebo in headless mode:
-```
-cd /src/shared/PX4-Autopilot/
-HEADLESS=1 make px4_sitl_rtps gazebo
-```
-
-Once gazebo is started, in a new terminal run 
-```
-micrortps_agent -t UDP
-```
-
 ### Train <a name="train"></a>
-Open a terminal and divide it with "tmux" in 4 command lines or open 4 terminals and run the docker in each one of them, as explained above.
+Open 2 terminals and run the docker in each one of them, as explained above.
 
-Then in the other two windows run:
+In the first one run:
 ```
-ros2 run px4_ros_extended env
-ros2 run px4_ros_extended <ddpg | ppo>_agent.py
+cd /src/shared
+./launch_agent_env_micro.sh
+```
+
+In the second one run:
+```
+ros2 run px4_ros_extended gazebo_runner.py
 ```
 
 ### Test <a name="test"></a>
 Open a terminal and divide it with "tmux" in 5 command lines or open 5 terminals and run the docker in each one of them, as explained above.
 
+Once gazebo is started, in a new terminal run 
+```
+micrortps_agent -t UDP
+```
 #### Baseline
 Then takeoff with:
 ```
@@ -83,7 +86,7 @@ ros2 run px4_ros_extended baseline_prec_land
 
 
 ### Speed-up <a name="speed"></a>
-In order to speed-up the simulation one can start it with these commands:
+In order to speed-up the simulation one can start it with these commands, they are already used in the bash script and in gazebo_runner.py:
 ```
 PX4_SIM_SPEED_FACTOR=2 HEADLESS=1 make px4_sitl_rtps gazebo
 micrortps_agent -t UDP

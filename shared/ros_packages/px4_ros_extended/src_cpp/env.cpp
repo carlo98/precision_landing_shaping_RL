@@ -16,6 +16,7 @@
 #include <px4_msgs/msg/vehicle_control_mode.hpp>
 #include <px4_msgs/msg/offboard_control_mode.hpp>
 #include <px4_msgs/msg/vehicle_odometry.hpp>
+#include <px4_msgs/msg/vehicle_status.hpp>
 
 
 using namespace std;
@@ -36,6 +37,7 @@ class EnvNode : public rclcpp::Node {
             offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("fmu/offboard_control_mode/in", 2);
             odometry_subscriber = this->create_subscription<VehicleOdometry>("fmu/vehicle_odometry/out", 1, std::bind(&EnvNode::odometry_callback, this, _1));
             trajectory_setpoint_publisher_ = this->create_publisher<TrajectorySetpoint>("fmu/trajectory_setpoint/in", 2);
+            status_subscriber = this->create_subscription<VehicleStatus>("fmu/vehicle_status/out", 1, std::bind(&EnvNode::status_callback, this, _1));
             agent_action_received_publisher_ = this->create_publisher<Int64>("/agent/action_received", 1);
             agent_subscriber = this->create_subscription<Float32MultiArray>("/agent/velocity", 1, std::bind(&EnvNode::agent_callback, this, _1));
             play_reset_subscriber = this->create_subscription<Float32MultiArray>("/env/play_reset/in", 1, std::bind(&EnvNode::play_reset_callback, this, _1));
@@ -67,11 +69,15 @@ class EnvNode : public rclcpp::Node {
                     this->land();
                 }
                 else if(this->play==0 && this->reset==1 && this->micrortps_connected) {  // Go to new position or hover (avoids failsafe activation)
-                    if(this->offboard_setpoint_counter_ <= 30 && this->micrortps_connected) {
+                    if(this->offboard_setpoint_counter_ <= 30) {
                         this->offboard_setpoint_counter_ += 1;
                     }
+                    else if(this->offboard_setpoint_counter_ > 30 && !this->armed_flag){  // Repeat shorter arming procedure
+                        this->offboard_setpoint_counter_ = 15;
+                    }
                     this->takeoff(this->w_x, this->w_y, this->w_z);
-                    std::cout << this->x << " " << this->y << " "<< this->z << "\n";
+
+                    cout << this->x << " " << this->y << " " << this->z << "\n";  // Debug
                 }
             };
             timer_ = this->create_wall_timer(50ms, timer_callback);  // 20Hz
@@ -87,6 +93,7 @@ class EnvNode : public rclcpp::Node {
         rclcpp::Subscription<Timesync>::SharedPtr timesync_sub_;
         rclcpp::Subscription<VehicleOdometry>::SharedPtr odometry_subscriber;
         rclcpp::Subscription<Float32MultiArray>::SharedPtr agent_subscriber;
+        rclcpp::Subscription<VehicleStatus>::SharedPtr status_subscriber;
         rclcpp::Publisher<Int64>::SharedPtr agent_action_received_publisher_;
         rclcpp::Publisher<OffboardControlMode>::SharedPtr offboard_control_mode_publisher_;
         rclcpp::Publisher<TrajectorySetpoint>::SharedPtr trajectory_setpoint_publisher_;
@@ -115,6 +122,7 @@ class EnvNode : public rclcpp::Node {
         float w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_xy-0.0)));
         float w_z = min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_z-min_z)));
         bool micrortps_connected = false;  // Whether micrortps_agent and gazebo are ready or not
+        bool armed_flag = false;  // Drone armed
 
         void publish_vehicle_command(uint16_t command, float param1 = 0.0, float param2 = 0.0) const;
         void publish_trajectory_setpoint_vel(float vx, float vy, float vz, float yawspeed) const;
@@ -123,6 +131,7 @@ class EnvNode : public rclcpp::Node {
         void play_reset_callback(const Float32MultiArray::SharedPtr msg_float);
         void odometry_callback(const VehicleOdometry::SharedPtr msg);
         void resetting_callback(const Int64::SharedPtr msg);
+        void status_callback(const VehicleStatus::SharedPtr msg);
         void agent_odom_pub();
         void publish_offboard_control_mode(bool pos, bool vel, bool acc, bool att, bool br) const;
         void new_position();
@@ -132,6 +141,14 @@ void EnvNode::land() const
 {
     this->publish_offboard_control_mode(false, true, false, false, false);
 	this->publish_trajectory_setpoint_vel(this->w_vx, this->w_vy, this->w_vz, 0.0);
+}
+
+void EnvNode::status_callback(const VehicleStatus::SharedPtr msg)
+{
+    this->armed_flag = msg->arming_state == 2;  // If 2 drone is armed
+    if(this->armed_flag){
+        this->offboard_setpoint_counter_ = 31;
+    }
 }
 
 // Receive action from agent
@@ -180,8 +197,9 @@ void EnvNode::resetting_callback(const Int64::SharedPtr msg)
 {
     if(this->micrortps_connected && msg->data == 1){
         this->offboard_setpoint_counter_ = 0;
+        this->new_position();
     }
-    this->micrortps_connected = msg->data == 0;
+    this->micrortps_connected = msg->data == 0 && (this->x != 0.0 ||  this->y != 0.0 || this->z != 0.0);
 }
 
 void EnvNode::new_position(){
