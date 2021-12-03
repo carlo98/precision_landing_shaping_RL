@@ -8,3 +8,5 @@ PX4-Autopilot
 logs
 models
 .ipynb_checkpoints
+ardupilot
+ardupilot_gazebo
