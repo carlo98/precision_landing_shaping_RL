@@ -54,7 +54,7 @@ class EnvNode : public rclcpp::Node {
                 });
 
             auto timer_callback = [this]() -> void {
-                if (this->offboard_setpoint_counter_ == 30) {
+                if (this->offboard_setpoint_counter_ == 30 && this->micrortps_connected) {
 		            // Change to Offboard mode after 30 setpoints
 		            this->publish_vehicle_command(VehicleCommand::VEHICLE_CMD_DO_SET_MODE, 1, 6);
 
@@ -68,7 +68,7 @@ class EnvNode : public rclcpp::Node {
                     this->land();
                 }
                 else if(this->play==0 && this->reset==1) {  // Go to new position or hover (avoids failsafe activation)
-                    if(this->offboard_setpoint_counter_ <= 30) {
+                    if(this->offboard_setpoint_counter_ <= 30 && this->micrortps_connected) {
                         this->offboard_setpoint_counter_ += 1;
                     }
                     this->takeoff(this->w_x, this->w_y, this->w_z);
@@ -125,6 +125,7 @@ class EnvNode : public rclcpp::Node {
         float w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_xy-0.0)));
         float w_z = min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_z-min_z)));
         float takeoff_time = 0.0;
+        bool micrortps_connected = false;  // Whether micrortps_agent and gazebo are ready or not
 
         void publish_vehicle_command(uint16_t command, float param1 = 0.0, float param2 = 0.0) const;
         void publish_trajectory_setpoint_vel(float vx, float vy, float vz, float yawspeed) const;
@@ -182,6 +183,7 @@ void EnvNode::play_reset_callback(const Float32MultiArray::SharedPtr msg_float)
         this->w_vx = 0.0;
         this->w_vy = 0.0;
         this->w_vz = 0.0;
+        this->micrortps_connected = false;
         this->land();
     }
 }
@@ -234,6 +236,10 @@ void EnvNode::odometry_callback(const VehicleOdometry::SharedPtr msg)
     this->vx = msg->vx;
     this->vy = msg->vy;
     this->vz = msg->vz;
+
+    if(!this->micrortps_connected && this->x != 0 && this->y != 0 && this->z != 0) {
+        this->micrortps_connected = true;
+    }
 }
 
 void EnvNode::status_callback(const VehicleStatus::SharedPtr msg){
