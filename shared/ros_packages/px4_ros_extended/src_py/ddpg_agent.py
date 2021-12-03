@@ -92,7 +92,7 @@ class AgentNode:
                 
                 self.memory.add_acc_reward(episode_tot_reward, cont_test)
                 self.env.reset_env()
-                if episode_num % self.info_dict['train_freq'] == 0 and self.memory.len() >= self.info_dict['mem_to_use']:
+                if episode_num % self.info_dict['train_freq'] == 0 and self.memory.len() >= self.info_dict['mem_to_use'] and not evaluating:  # Do not train during evaluation episodes
                     print("Training...")
                     self.ddpg.optimize(self.info_dict['mem_to_use'])
                     print("Training ended")

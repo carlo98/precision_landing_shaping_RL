@@ -44,12 +44,6 @@ To start the docker run:
 sudo ./run_docker.sh run
 ```
 
-To start Gazebo:
-```
-cd /src/shared/PX4-Autopilot/
-make px4_sitl_rtps gazebo
-```
-
 ### Train <a name="train"></a>
 Open 2 terminals and run the docker in each one of them, as explained above.
 
@@ -65,7 +59,13 @@ ros2 run px4_ros_extended gazebo_runner.py
 ```
 
 ### Test <a name="test"></a>
-Open a terminal and divide it with "tmux" in 5 command lines or open 5 terminals and run the docker in each one of them, as explained above.
+Open a terminal and divide it with "tmux" in 4 command lines or open 4 terminals and run the docker in each one of them, as explained above.
+
+To start Gazebo:
+```
+cd /src/shared/PX4-Autopilot/
+make px4_sitl_rtps gazebo
+```
 
 Once gazebo is started, in a new terminal run 
 ```
