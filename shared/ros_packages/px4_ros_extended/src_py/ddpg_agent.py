@@ -55,12 +55,9 @@ class AgentNode:
         start_time_episode = time.time()
 
         while episode_num < self.info_dict['num_env_episodes']:
-            evaluating = episode_num != 0 and (episode_num % self.info_dict['evaluate_freq'] == 0 or 0 < cont_test < self.info_dict['evaluate_ep'])
-            if cont_test >= self.info_dict['evaluate_ep']:
-                cont_test = 0
+            evaluating = episode_num != 0 and (episode_num % self.info_dict['evaluate_freq'] == 0 or 0 <= cont_test < self.info_dict['evaluate_ep'])
             
             episode_steps += 1
-
             
             with torch.no_grad():
                 if evaluating:  # Evaluate model
@@ -86,12 +83,17 @@ class AgentNode:
                 else:
                     print("End episode " + str(episode_num))
                 if evaluating:
-                    print("Evaluation episode " + str(cont_test+1))
-                    if episode_tot_reward > best_eval_reward:  # Saving best model based on evaluation reward
-                        print("Saving best model.")
-                        self.ddpg.save_models(self.memory.id_file, best=True)
-                        best_eval_reward = episode_tot_reward
                     cont_test += 1
+                    print("Evaluation episode " + str(cont_test))
+                    if cont_test > self.info_dict['evaluate_ep']:
+                        cont_test = 0
+                        mean_reward_eval = np.mean(self.memory.mean_rewards_test[-int(self.info_dict['evaluate_ep']/self.info_dict['test_window_reward']):])
+                        
+                        if mean_reward_eval > best_eval_reward:  # Saving best model based on mean evaluation reward of group
+                            print("Saving best model.")
+                            self.ddpg.save_models(self.memory.id_file, best=True)
+                            best_eval_reward = mean_reward_eval
+                    
                 print("Position x: " + str(-inputs[0]) + " y: " + str(-inputs[1]) + " z: " + str(-inputs[2]))
                 print("Acc reward: " + str(episode_tot_reward) + " Time: " + str(time.time()-start_time_episode))
                 
