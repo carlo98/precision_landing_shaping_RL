@@ -1,3 +1,4 @@
+# https://github.com/PX4/PX4-containers
 FROM px4io/px4-dev-ros-melodic:2021-09-08
 
 # setup environment
@@ -27,7 +28,6 @@ RUN apt-get install --quiet --no-install-recommends -y \
 		ros-$ROS_DISTRO-launch-testing-ament-cmake \
 		ros-$ROS_DISTRO-ros2bag \
 		ros-$ROS_DISTRO-rosidl-generator-dds-idl \
-		ros-$ROS_DISTRO-gazebo-ros-pkgs \
 	&& apt-get -y autoremove \
 	&& apt-get clean autoclean \
 	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*

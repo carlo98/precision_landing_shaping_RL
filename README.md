@@ -54,6 +54,13 @@ cd /src/shared/PX4-Autopilot
 make px4_sitl_rtps gazebo
 ```
 
+In Gazebo's terminal type run
+```
+param set COM_RCL_EXCEPT 4
+```
+
+Close Gazebo.
+
 ### Jupyter Notebook <a name="notebook"></a>
 In order to use the "Log Analysis.ipynb" to look at the results and rewards you will have to install a few things in 
 your computer, 
