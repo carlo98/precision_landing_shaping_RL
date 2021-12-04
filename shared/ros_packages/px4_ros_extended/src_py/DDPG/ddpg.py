@@ -118,14 +118,19 @@ class DDPG:
         utils.soft_update(self.target_actor, self.actor, self.tau)
         utils.soft_update(self.target_critic, self.critic, self.tau)
 
-    def save_models(self, episode_count):
+    def save_models(self, episode_count, best=False):
         """
         saves the target actor and critic models
         :param episode_count: the count of episodes iterated
+        :param best: if true saving best model, false most recent one
         :return:
         """
-        torch.save(self.target_actor.state_dict(), self.path_models + '/' + str(episode_count) + '_actor.pt')
-        torch.save(self.target_critic.state_dict(), self.path_models + '/' + str(episode_count) + '_critic.pt')
+        if best:
+            base_path = self.path_models + '/' + str(episode_count) + "_best"
+        else:
+            base_path = self.path_models + '/' + str(episode_count)
+        torch.save(self.target_actor.state_dict(), base_path + '_actor.pt')
+        torch.save(self.target_critic.state_dict(), base_path + '_critic.pt')
         print('Models saved successfully')
 
     def load_models(self, episode):

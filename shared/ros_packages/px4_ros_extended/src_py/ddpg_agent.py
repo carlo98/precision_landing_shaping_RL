@@ -35,9 +35,6 @@ class AgentNode:
                          lr_actor=self.info_dict['lr_actor'], lr_critic=self.info_dict['lr_critic'], gamma=self.info_dict['gamma'],
                          tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'],
                          epochs=self.info_dict['epochs'])
-        
-        self.cont_steps = 0
-        self.previous_obs = np.zeros(self.info_dict['obs_shape'])
 
         self.start_time = time.time()
 
@@ -47,12 +44,14 @@ class AgentNode:
         episode_num = 0
         cont_test = 0
         episode_steps = 0
+        cont_steps = 0
+        best_eval_reward = 0.0
 
         while self.env.reset:  # Waiting for env to stop resetting
             pass
 
         inputs = self.env.play_env()  # Start landing listening in src_cpp/env.cpp
-        self.previous_obs = self.normalize_input(np.copy(inputs))
+        previous_obs = self.normalize_input(np.copy(inputs))
         start_time_episode = time.time()
 
         while episode_num < self.info_dict['num_env_episodes']:
@@ -67,24 +66,28 @@ class AgentNode:
                 if evaluating:  # Evaluate model
                     action = self.ddpg.get_exploitation_action(normalized_input)
                 else:
-                    action = self.ddpg.get_exploration_action(normalized_input, self.cont_steps)
+                    action = self.ddpg.get_exploration_action(normalized_input, cont_steps)
             
             inputs, reward, done = self.env.act(action, self.normalize_input)
 
-            self.previous_obs = np.copy(normalized_input)
+            previous_obs = np.copy(normalized_input)
             normalized_input = self.normalize_input(np.copy(inputs))
             
             if episode_steps > 1:
                 episode_tot_reward += reward
-                self.memory.add(self.previous_obs, action, reward, normalized_input, episode_num)
+                self.memory.add(previous_obs, action, reward, normalized_input, episode_num)
 
-            if (self.cont_steps % self.info_dict['num-steps'] == 0 and self.cont_steps > 0 and episode_steps > 1) or done:
+            if (cont_steps % self.info_dict['num-steps'] == 0 and cont_steps > 0 and episode_steps > 1) or done:
                 if done:
                     print("Done " + str(episode_num))
                 else:
                     print("End episode " + str(episode_num))
                 if evaluating:
                     print("Evaluation episode " + str(cont_test+1))
+                    if episode_tot_reward > best_eval_reward:  # Saving best model based on evaluation reward
+                        print("Saving best model.")
+                        self.ddpg.save_models(self.memory.id_file, best=True)
+                        best_eval_reward = episode_tot_reward
                     cont_test += 1
                 print("Position x: " + str(-inputs[0]) + " y: " + str(-inputs[1]) + " z: " + str(-inputs[2]))
                 print("Acc reward: " + str(episode_tot_reward) + " Time: " + str(time.time()-start_time_episode))
@@ -101,7 +104,7 @@ class AgentNode:
                     print("Saving mean and std of rewards in file.")
                     self.memory.log()
                     print("Saving model.")
-                    self.ddpg.save_models(self.memory.id_file)
+                    self.ddpg.save_models(self.memory.id_file, best=False)
                     
                 episode_tot_reward = 0.0
                 episode_num += 1
@@ -109,10 +112,10 @@ class AgentNode:
 
                 inputs = self.env.play_env()  # Restart landing listening, after training
                 print("\nNew episode started\n")
-                self.previous_obs = self.normalize_input(np.copy(inputs))
+                previous_obs = self.normalize_input(np.copy(inputs))
                 start_time_episode = time.time()
                 
-            self.cont_steps += 1
+            cont_steps += 1
 
         print("Saving model...\nTotal time: ", time.time()-self.start_time)
         self.ddpg.save_models(self.memory.id_file)

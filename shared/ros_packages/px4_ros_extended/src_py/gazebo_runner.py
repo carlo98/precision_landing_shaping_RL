@@ -18,6 +18,9 @@ class GazeboRunnerNode:
                                                                          self.vehicle_odometry_callback, 1)
         self.resetting_publisher = self.node.create_publisher(Int64, '/env/resetting', 1)
 
+        # Look for "connection closed by client"
+        self.timer_check_connection = self.node.create_timer(1, self.check_connection)  # 1Hz
+
         self.train = train
         self.cont_takeoff_failing = 0
         self.state = []
@@ -25,6 +28,7 @@ class GazeboRunnerNode:
         self.started = False
         self.msg_reset_gazebo = Int64()
         self.start_gazebo()
+        self.start_time_no_connection = time.time()  # Used to catch stalled trainig due to "connection closed by client"
 
     def vehicle_odometry_callback(self, obs):
         self.state = [obs.x, obs.y, obs.z, obs.vx, obs.vy, obs.vz]
@@ -39,6 +43,7 @@ class GazeboRunnerNode:
         else:
             self.started = True
             self.cont_takeoff_failing = 0
+        self.start_time_no_connection = time.time()  # Resetting time without connection
 
     def start_gazebo(self):
         self.started = False
@@ -51,12 +56,18 @@ class GazeboRunnerNode:
         self.cont_takeoff_failing = 0
         self.msg_reset_gazebo.data = 0  # Signaling to env that gazebo is ready
         self.resetting_publisher.publish(self.msg_reset_gazebo)
+        self.start_time_no_connection = time.time()  # Resetting time without connection
 
     def kill_gazebo(self):
         self.msg_reset_gazebo.data = 1  # Signaling to env that gazebo is resetting
         self.resetting_publisher.publish(self.msg_reset_gazebo)
         self.gazebo.kill()
         time.sleep(1)
+
+    def check_connection(self):
+        if time.time() - self.start_time_no_connection > 5.0:
+            self.kill_gazebo()
+            self.start_gazebo()
 
 
 if __name__ == '__main__':

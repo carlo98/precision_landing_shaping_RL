@@ -58,6 +58,12 @@ In the second one run:
 ros2 run px4_ros_extended gazebo_runner.py --train
 ```
 
+In "shared/ros_packages/px4_ros_extended/src_py/params.yaml" you can set a few parameters.
+
+In the folder "shared/logs" are saved the rewards in pickle files, you can have a look at the jupiter notebook 
+"Log Analysis.ipynb" to learn the format; in the folder "shared/models" are saved the actor and critic models, 
+the files with "best" in the name contain the best weights found during evaluation.
+
 ### Test <a name="test"></a>
 Open 2 terminals and run the docker in each one of them, as explained above.
 
@@ -86,7 +92,7 @@ In order to speed-up the simulation one can start it with these commands, they a
 ```
 PX4_SIM_SPEED_FACTOR=2 HEADLESS=1 make px4_sitl_rtps gazebo
 micrortps_agent -t UDP
-ros2 run px4_ros_extended <ddpg | ppo>_agent.py -p /use_sim_time:=true
+ros2 run px4_ros_extended ddpg_agent.py -p /use_sim_time:=true
 ros2 run px4_ros_extended env -p /use_sim_time:=true
 ```
 
