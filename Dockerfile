@@ -47,7 +47,7 @@ RUN pip3 install --upgrade \
 		pytest-repeat \
 		pytest-rerunfailures
 		
-RUN pip3 install torch
+RUN pip3 install torch pandas jupyter-notebook -y
 
 # bootstrap rosdep
 RUN rosdep update
@@ -57,3 +57,12 @@ RUN colcon mixin add default https://raw.githubusercontent.com/colcon/colcon-mix
 	&& colcon mixin update \
 	&& colcon metadata add default https://raw.githubusercontent.com/colcon/colcon-metadata-repository/master/index.yaml \
 	&& colcon metadata update
+	
+WORKDIR /src
+# Repository forked in order to avoid by default "missing RC" failsafe when in offboard mode
+RUN git clone https://github.com/carlo98/PX4-Autopilot.git
+
+WORKDIR /src/PX4-Autopilot
+RUN HEADLESS=1 make px4_sitl_rtps gazebo
+
+WORKDIR /

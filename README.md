@@ -11,9 +11,6 @@ to follow the progress.
 
 # Table of contents
 1. [Setup](#setup)
-   1. [PX4-Autopilot](#px4)
-   2. [Docker Build](#docker)
-   3. [Jupyter Notebook](#notebook)
 2. [Usage](#usage)
    1. [Train](#train)
    2. [Test](#test)
@@ -21,15 +18,6 @@ to follow the progress.
 3. [References](#references)
 
 ## Setup <a name="setup"></a>
-
-### PX4 Autopilot <a name="px4"></a>
-Clone [PX4-AutoPilot](https://github.com/PX4/PX4-Autopilot) in the "shared" folder.
-```
-cd shared
-git clone https://github.com/PX4/PX4-Autopilot.git
-```
-
-### Docker Build <a name="docker"></a>
 Modify the absolute paths in "run_docker.sh" to reflect the position of the repository on your computer.
 
 Build and start the docker, it will take same time:
@@ -46,28 +34,6 @@ Once it has finished, in the docker run the following commands, in order to buil
 cd /src/shared/ros_packages
 colcon build --packages-select px4_msgs custom_msgs
 colcon build --packages-select px4_ros_com px4_ros_extended
-```
-
-Start PX4-Autopilot in order to perform the build, it will take same time
-```
-cd /src/shared/PX4-Autopilot
-make px4_sitl_rtps gazebo
-```
-
-In Gazebo's terminal type run
-```
-param set COM_RCL_EXCEPT 4
-```
-
-Close Gazebo.
-
-### Jupyter Notebook <a name="notebook"></a>
-In order to use the "Log Analysis.ipynb" to look at the results and rewards you will have to install a few things in 
-your computer, 
-outside of the docker run:
-```
-sudo apt install jupyter-notebook  # If this doesn't work search for jupyter notebook installation in internet, there's plenty of resources
-sudo apt install pandas
 ```
 
 ## Usage <a name="usage"></a>
@@ -125,14 +91,19 @@ cd /src/shared
 ```
 
 
-### Speed-up <a name="speed"></a>
+### Speed-up & Useful PX4 Parameters <a name="speed"></a>
 In order to speed-up the simulation one can start it with these commands, they are already used in the bash script and 
 in gazebo_runner.py:
 ```
-PX4_SIM_SPEED_FACTOR=2 HEADLESS=1 make px4_sitl_rtps gazebo
+PX4_SIM_SPEED_FACTOR=5 HEADLESS=1 make px4_sitl_rtps gazebo
 micrortps_agent -t UDP
 ros2 run px4_ros_extended ddpg_agent.py -p /use_sim_time:=true
 ros2 run px4_ros_extended env -p /use_sim_time:=true
+```
+
+In order to avoid following the drone, used in "gazebo_runner.py --test" 
+```
+PX4_NO_FOLLOW_MODE=1 make px4_sitl_rtps gazebo
 ```
 
 ## References <a name="references"></a>

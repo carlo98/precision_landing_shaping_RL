@@ -49,9 +49,9 @@ class GazeboRunnerNode:
         self.started = False
 
         if self.train:
-            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo", "PX4_SIM_SPEED_FACTOR=6", "HEADLESS=1"], cwd="/src/shared/PX4-Autopilot")
+            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo", "PX4_SIM_SPEED_FACTOR=6", "HEADLESS=1"], cwd="/src/PX4-Autopilot")
         else:
-            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo"], cwd="/src/shared/PX4-Autopilot")
+            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo", "PX4_NO_FOLLOW_MODE=1"], cwd="/src/PX4-Autopilot")
         time.sleep(5)
         self.cont_takeoff_failing = 0
         self.msg_reset_gazebo.data = 0  # Signaling to env that gazebo is ready
