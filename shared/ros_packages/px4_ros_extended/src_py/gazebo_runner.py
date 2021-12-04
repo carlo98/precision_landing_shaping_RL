@@ -3,6 +3,7 @@ import subprocess
 import numpy as np
 import rclpy
 import time
+import argparse
 
 # ROS dep
 from px4_msgs.msg import VehicleOdometry
@@ -10,14 +11,17 @@ from std_msgs.msg import Int64
 
 
 class GazeboRunnerNode:
-    def __init__(self, node):
+    def __init__(self, node, train=True):
         self.node = node
 
         self.vehicle_odometry_subscriber = self.node.create_subscription(VehicleOdometry, '/fmu/vehicle_odometry/out',
                                                                          self.vehicle_odometry_callback, 1)
         self.resetting_publisher = self.node.create_publisher(Int64, '/env/resetting', 1)
 
+        self.train = train
         self.cont_takeoff_failing = 0
+        self.state = []
+        self.gazebo = None
         self.started = False
         self.msg_reset_gazebo = Int64()
         self.start_gazebo()
@@ -38,7 +42,11 @@ class GazeboRunnerNode:
 
     def start_gazebo(self):
         self.started = False
-        self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo", "PX4_SIM_SPEED_FACTOR=6", "HEADLESS=1"], cwd="/src/shared/PX4-Autopilot")
+
+        if self.train:
+            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo", "PX4_SIM_SPEED_FACTOR=6", "HEADLESS=1"], cwd="/src/shared/PX4-Autopilot")
+        else:
+            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo"], cwd="/src/shared/PX4-Autopilot")
         time.sleep(5)
         self.cont_takeoff_failing = 0
         self.msg_reset_gazebo.data = 0  # Signaling to env that gazebo is ready
@@ -52,7 +60,14 @@ class GazeboRunnerNode:
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    feature_parser = parser.add_mutually_exclusive_group(required=False)
+    feature_parser.add_argument('--train', dest='train', action='store_true')
+    feature_parser.add_argument('--test', dest='train', action='store_false')
+    parser.set_defaults(train=True)
+    args = parser.parse_args()
+
     rclpy.init(args=None)
     m_node = rclpy.create_node('gazebo_runner_node')
-    gsNode = GazeboRunnerNode(m_node)
+    gsNode = GazeboRunnerNode(m_node, args.train)
     rclpy.spin(m_node)

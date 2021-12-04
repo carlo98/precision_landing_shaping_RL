@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import numpy as np
 from rewards import Reward
-import rclpy
 
 # ROS dep
 from std_msgs.msg import Int64

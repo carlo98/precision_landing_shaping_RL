@@ -50,39 +50,35 @@ Open 2 terminals and run the docker in each one of them, as explained above.
 In the first one run:
 ```
 cd /src/shared
-./launch_agent_env_micro.sh
+./launch_train_ddpg.sh
 ```
 
 In the second one run:
 ```
-ros2 run px4_ros_extended gazebo_runner.py
+ros2 run px4_ros_extended gazebo_runner.py --train
 ```
 
 ### Test <a name="test"></a>
-Open a terminal and divide it with "tmux" in 4 command lines or open 4 terminals and run the docker in each one of them, as explained above.
+Open 2 terminals and run the docker in each one of them, as explained above.
 
 To start Gazebo:
 ```
-cd /src/shared/PX4-Autopilot/
-make px4_sitl_rtps gazebo
+ros2 run px4_ros_extended gazebo_runner.py --test
 ```
 
-Once gazebo is started, in a new terminal run 
-```
-micrortps_agent -t UDP
-```
 #### Baseline
-Then takeoff with:
+Once gazebo is started in a new terminal run
 ```
-ros2 run px4_ros_extended env
-```
-
-And perform the landing with:
-```
-ros2 run px4_ros_extended baseline_prec_land
+cd /src/shared
+./launch_baseline.sh
 ```
 
 #### Agent
+Once gazebo is started in a new terminal run
+```
+cd /src/shared
+./launch_test_ddpg.sh
+```
 
 
 ### Speed-up <a name="speed"></a>

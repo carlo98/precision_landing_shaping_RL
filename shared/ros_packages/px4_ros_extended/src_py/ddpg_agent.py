@@ -61,10 +61,9 @@ class AgentNode:
                 cont_test = 0
             
             episode_steps += 1
-            
+
+            normalized_input = self.normalize_input(np.copy(inputs))
             with torch.no_grad():
-                normalized_input = self.normalize_input(np.copy(inputs))
-                
                 if evaluating:  # Evaluate model
                     action = self.ddpg.get_exploitation_action(normalized_input)
                 else:
@@ -92,7 +91,8 @@ class AgentNode:
                 
                 self.memory.add_acc_reward(episode_tot_reward, cont_test)
                 self.env.reset_env()
-                if episode_num % self.info_dict['train_freq'] == 0 and self.memory.len() >= self.info_dict['mem_to_use'] and not evaluating:  # Do not train during evaluation episodes
+                if episode_num % self.info_dict['train_freq'] == 0 and self.memory.len() >= self.info_dict['mem_to_use'] \
+                        and not evaluating:  # Do not train during evaluation episodes
                     print("Training...")
                     self.ddpg.optimize(self.info_dict['mem_to_use'])
                     print("Training ended")
@@ -107,8 +107,8 @@ class AgentNode:
                 episode_num += 1
                 episode_steps = 0
 
-                print("\nStarting new episode\n")
                 inputs = self.env.play_env()  # Restart landing listening, after training
+                print("\nNew episode started\n")
                 self.previous_obs = self.normalize_input(np.copy(inputs))
                 start_time_episode = time.time()
                 
@@ -129,6 +129,7 @@ def spin_thread(node):
 
 
 if __name__ == '__main__':
+    print("Starting Agent and Env Wrapper")
     rclpy.init(args=None)
     m_node = rclpy.create_node('agent_node')
     gsNode = AgentNode(m_node)
@@ -136,5 +137,3 @@ if __name__ == '__main__':
     x.start()
     gsNode.train()
     x.join()
-    
-    

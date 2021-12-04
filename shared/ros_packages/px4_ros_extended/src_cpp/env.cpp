@@ -76,8 +76,6 @@ class EnvNode : public rclcpp::Node {
                         this->offboard_setpoint_counter_ = 15;
                     }
                     this->takeoff(this->w_x, this->w_y, this->w_z);
-
-                    cout << this->x << " " << this->y << " " << this->z << "\n";  // Debug
                 }
             };
             timer_ = this->create_wall_timer(50ms, timer_callback);  // 20Hz
