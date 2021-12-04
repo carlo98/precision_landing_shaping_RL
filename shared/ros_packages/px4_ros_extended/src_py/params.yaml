@@ -1,7 +1,7 @@
 # General
 action_space: 2
 obs_shape: 5
-num_env_episodes: 6000
+num_env_episodes: 6009  # Keep it a multiple of evaluate_freq and add evaluate_ep at the end
 train_freq: 1  # In episodes
 num-steps: 350
 seed: 5

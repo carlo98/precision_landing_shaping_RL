@@ -28,11 +28,13 @@ class AgentNode:
 
         self.env = EnvWrapperNode(node, self.info_dict['obs_shape'], self.info_dict['max_height'], self.info_dict['max_side'],
                                   self.info_dict['max_vel_z'], self.info_dict['max_vel_xy'])
-        self.memory = Memory(self.info_dict['max_memory_len'], self.info_dict['train_window_reward'], self.info_dict['test_window_reward'])
+        self.memory = Memory(self.info_dict['max_memory_len'])
         self.ddpg = DDPG(self.info_dict['obs_shape'], self.info_dict['action_space'], self.memory,
                          lr_actor=self.info_dict['lr_actor'], lr_critic=self.info_dict['lr_critic'], gamma=self.info_dict['gamma'],
                          tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'],
                          epochs=self.info_dict['epochs'])
+
+        self.ddpg.load_models(1, best=True)
 
     def run(self):
 

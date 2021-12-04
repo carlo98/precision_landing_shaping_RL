@@ -7,16 +7,10 @@ import os
 
 
 class Memory:
-    def __init__(self, size, train_window_reward, test_window_reward):
+    def __init__(self, size):
         self.buffer = deque(maxlen=size)
-        self.mean_rewards_train = []
-        self.std_rewards_train = []
-        self.mean_rewards_test = []
-        self.std_rewards_test = []
-        self.rewards_window_train = []
-        self.rewards_window_test = []
-        self.train_window_reward = train_window_reward
-        self.test_window_reward = test_window_reward
+        self.acc_rewards_train = []
+        self.acc_rewards_test = []
         self.maxSize = size
         self.length = 0
         
@@ -57,7 +51,7 @@ class Memory:
     def log(self):
         filename = '/log_' + str(self.id_file) + ".pkl"
         with open(self.path_logs+filename, "wb") as pkl_f:
-            pickle.dump([self.mean_rewards_train, self.std_rewards_train, self.mean_rewards_test, self.std_rewards_test], pkl_f)
+            pickle.dump([self.acc_rewards_train, self.acc_rewards_test], pkl_f)
 
     def add(self, s, a, r, s1, le):
         """
@@ -78,19 +72,7 @@ class Memory:
 
     def add_acc_reward(self, acc_r, cont_test):
         if cont_test > 0:
-            self.rewards_window_test.append(acc_r)
-            if len(self.rewards_window_test) == self.test_window_reward:  # Mean and std of test rewards window
-                rewards = np.array(self.rewards_window_test)
-                self.rewards_window_test = []
-
-                self.mean_rewards_test.append(rewards.mean())
-                self.std_rewards_test.append(rewards.std())
+            self.acc_rewards_test.append(acc_r)
         else:
-            self.rewards_window_train.append(acc_r)
-            if len(self.rewards_window_train) == self.train_window_reward:  # Mean and std of train rewards window
-                rewards = np.array(self.rewards_window_train)
-                self.rewards_window_train = []
-
-                self.mean_rewards_train.append(rewards.mean())
-                self.std_rewards_train.append(rewards.std())
+            self.acc_rewards_train.append(acc_r)
 

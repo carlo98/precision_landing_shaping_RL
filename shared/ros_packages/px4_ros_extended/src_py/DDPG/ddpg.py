@@ -118,29 +118,34 @@ class DDPG:
         utils.soft_update(self.target_actor, self.actor, self.tau)
         utils.soft_update(self.target_critic, self.critic, self.tau)
 
-    def save_models(self, episode_count, best=False):
+    def save_models(self, id, best=False):
         """
         saves the target actor and critic models
-        :param episode_count: the count of episodes iterated
-        :param best: if true saving best model, false most recent one
+        :param id: id of session
+        :param best: if true saving best model, if false most recent one
         :return:
         """
         if best:
-            base_path = self.path_models + '/' + str(episode_count) + "_best"
+            base_path = self.path_models + '/' + str(id) + "_best"
         else:
-            base_path = self.path_models + '/' + str(episode_count)
+            base_path = self.path_models + '/' + str(id)
         torch.save(self.target_actor.state_dict(), base_path + '_actor.pt')
         torch.save(self.target_critic.state_dict(), base_path + '_critic.pt')
         print('Models saved successfully')
 
-    def load_models(self, episode):
+    def load_models(self, id, best=True):
         """
         loads the target actor and critic models, and copies them onto actor and critic models
-        :param episode: the count of episodes iterated (used to find the file name)
+        :param id: id of session
+        :param best: if true loading best model, if false last one
         :return:
         """
-        self.actor.load_state_dict(torch.load(self.path_models + '/' + str(episode) + '_actor.pt'))
-        self.critic.load_state_dict(torch.load(self.path_models + '/' + str(episode) + '_critic.pt'))
+        if best:
+            base_path = self.path_models + '/' + str(id) + "_best"
+        else:
+            base_path = self.path_models + '/' + str(id)
+        self.actor.load_state_dict(torch.load(base_path + '_actor.pt'))
+        self.critic.load_state_dict(torch.load(base_path + '_critic.pt'))
         utils.hard_update(self.target_actor, self.actor)
         utils.hard_update(self.target_critic, self.critic)
         print('Models loaded successfully')

@@ -59,8 +59,8 @@ class OrnsteinUhlenbeckActionNoise:
     def sample(self, n_steps):
         dx = self.theta * (self.mu - self.X)
         
-        # Coefficient for number of steps chosen in order to have noise in range -0.1 and 0.1 after 120k steps
-        dx = dx + self.sigma * 0.999978**n_steps * np.random.randn(len(self.X))
+        # Coefficient for number of steps chosen in order to have noise in range -0.3 and 0.3 after 1000k steps ~ 150 steps/episode & 6k episodes
+        dx = dx + self.sigma * 0.9999985**n_steps * np.random.randn(len(self.X))
         self.X = self.X + dx
         return self.X
 
@@ -69,7 +69,7 @@ class OrnsteinUhlenbeckActionNoise:
 if __name__ == '__main__':
     ou = OrnsteinUhlenbeckActionNoise(1)
     states = []
-    for i in range(120000):
+    for i in range(1000000, 1100000):
         states.append(ou.sample(i))
     import matplotlib.pyplot as plt
 
