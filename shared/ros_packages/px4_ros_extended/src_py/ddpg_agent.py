@@ -61,11 +61,14 @@ class AgentNode:
             
             episode_steps += 1
 
-            normalized_input = self.normalize_input(np.copy(inputs))
+            
             with torch.no_grad():
                 if evaluating:  # Evaluate model
+                    inputs = np.random.normal(loc=inputs, scale=1.0)  # During evaluation adding noise to the state, Gaussian (0, 1)
+                    normalized_input = self.normalize_input(np.copy(inputs))
                     action = self.ddpg.get_exploitation_action(normalized_input)
                 else:
+                    normalized_input = self.normalize_input(np.copy(inputs))
                     action = self.ddpg.get_exploration_action(normalized_input, cont_steps)
             
             inputs, reward, done = self.env.act(action, self.normalize_input)
