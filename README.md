@@ -1,7 +1,7 @@
 # Precision landing with physics-informed reinforcement learning
 Deep NN trained with physics-informed reinforcement learning for drone precision landing.
 
-This repository is a work in progress, at the moment almost nothing works, take a look at the [Project Board](https://github.com/carlo98/precision_landing_physics_informed_RL/projects/1) to follow the progress.
+This repository is a work in progress, take a look at the [Project Board](https://github.com/carlo98/precision_landing_physics_informed_RL/projects/1) to follow the progress.
 
 # Table of contents
 1. [Setup](#setup)
