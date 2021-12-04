@@ -5,7 +5,7 @@ xhost +
 
 if [ $1 = 'build' ]
 then
-    docker build -t px4io/px4-dev-ros2-dashing . -f docker/Dockerfile_ros2-dashing
+    docker build -t px4io/px4-dev-ros2-dashing . -f Dockerfile
     docker run --privileged -it --net=host \
 	   -v /home/carlo/Desktop/AI_in_Industry/Project/pl_pirl/shared:/src/shared:rw \
 	   -v /tmp/.X11-unix:/tmp/.X11-unix:ro \

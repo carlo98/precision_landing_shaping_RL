@@ -47,8 +47,7 @@ RUN pip3 install --upgrade \
 		pytest-repeat \
 		pytest-rerunfailures
 		
-RUN pip3 install pandas torch
-RUN sudo apt install ros-dashing-gazebo-ros-pkgs
+RUN pip3 install torch
 
 # bootstrap rosdep
 RUN rosdep update
