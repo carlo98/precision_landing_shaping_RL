@@ -87,7 +87,7 @@ class AgentNode:
                     print("Evaluation episode " + str(cont_test))
                     if cont_test > self.info_dict['evaluate_ep']:
                         cont_test = 0
-                        mean_reward_eval = np.mean(self.memory.mean_rewards_test[-self.info_dict['evaluate_ep']:])
+                        mean_reward_eval = np.mean(self.memory.acc_rewards_test[-self.info_dict['evaluate_ep']:])
                         
                         if mean_reward_eval > best_eval_reward:  # Saving best model based on mean evaluation reward of group
                             print("Saving best model.")

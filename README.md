@@ -62,7 +62,7 @@ In "shared/ros_packages/px4_ros_extended/src_py/params.yaml" you can set a few p
 
 #### Plots and Models
 In the folder "shared/logs" are saved the rewards in pickle files, you can have a look at the jupyter notebook 
-"Log Analysis.ipynb" to use them and print a few plots.
+"shared/Log Analysis.ipynb" to use them and print a few plots.
 
 In the folder "shared/models" are saved the actor and critic models, 
 the files with "best" in the name contain the best weights found during evaluation; the number at the start of the name 
