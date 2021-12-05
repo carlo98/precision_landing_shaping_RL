@@ -70,8 +70,8 @@ class Memory:
             self.length += 1
         self.buffer.append(transition)
 
-    def add_acc_reward(self, acc_r, cont_test):
-        if cont_test > 0:
+    def add_acc_reward(self, acc_r, evaluating):
+        if evaluating:
             self.acc_rewards_test.append(acc_r)
         else:
             self.acc_rewards_train.append(acc_r)

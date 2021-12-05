@@ -55,7 +55,7 @@ class AgentNode:
         start_time_episode = time.time()
 
         while episode_num < self.info_dict['num_env_episodes']:
-            evaluating = episode_num != 0 and (episode_num % self.info_dict['evaluate_freq'] == 0 or 0 <= cont_test < self.info_dict['evaluate_ep'])
+            evaluating = episode_num != 0 and (episode_num % self.info_dict['evaluate_freq'] == 0 or 0 < cont_test < self.info_dict['evaluate_ep'])
             
             episode_steps += 1
             
@@ -97,7 +97,7 @@ class AgentNode:
                 print("Position x: " + str(-inputs[0]) + " y: " + str(-inputs[1]) + " z: " + str(-inputs[2]))
                 print("Acc reward: " + str(episode_tot_reward) + " Time: " + str(time.time()-start_time_episode))
                 
-                self.memory.add_acc_reward(episode_tot_reward, cont_test)
+                self.memory.add_acc_reward(episode_tot_reward, evaluating)
                 self.env.reset_env()
                 if episode_num % self.info_dict['train_freq'] == 0 and self.memory.len() >= self.info_dict['mem_to_use'] \
                         and not evaluating:  # Do not train during evaluation episodes
