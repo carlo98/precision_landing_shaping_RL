@@ -5,6 +5,8 @@ import numpy as np
 import torch
 import threading
 import sys
+import pickle
+from datetime import datetime
 
 # ROS
 import rclpy
@@ -36,24 +38,35 @@ class AgentNode:
 
         self.ddpg.load_models(1, best=True)
 
+        self.path_logs = "/src/shared/test_logs"
+
     def run(self):
 
+        log_positions = {'x': [], 'y': [], 'z': []}  # Saving position from target in x,y,z-axis
+        log_velocities = {'vx': [], 'vy': []}  # Saving relative velocity to target in x,y-axis (actions)
         cont_steps = 0
         episode_tot_reward = 0
         while self.env.reset:  # Waiting for env to stop resetting
             pass
 
         inputs = self.env.play_env()  # Start landing listening in src_cpp/env.cpp
+        log_positions['x'].append(inputs[0])
+        log_positions['y'].append(inputs[1])
+        log_positions['y'].append(inputs[2])
 
         while True:
             normalized_input = self.normalize_input(np.copy(inputs))
             with torch.no_grad():
                 action = self.ddpg.get_exploitation_action(normalized_input)
-            
-            inputs, reward, done = self.env.act(action, self.normalize_input)
-            episode_tot_reward += reward
 
-            normalized_input = self.normalize_input(np.copy(inputs))
+            log_velocities['vx'].append(inputs[3]*self.info_dict['max_vel_xy'])
+            log_velocities['vy'].append(inputs[4]*self.info_dict['max_vel_xy'])
+
+            inputs, reward, done = self.env.act(action, self.normalize_input)
+            log_positions['x'].append(inputs[0])
+            log_positions['y'].append(inputs[1])
+            log_positions['y'].append(inputs[2])
+            episode_tot_reward += reward
 
             if (cont_steps % self.info_dict['num-steps'] == 0 and cont_steps > 0) or done:
                 if done:
@@ -66,8 +79,12 @@ class AgentNode:
                 self.env.reset_env()
                     
                 episode_tot_reward = 0.0
+                self.log(log_positions, log_velocities)
 
                 inputs = self.env.play_env()  # Restart landing listening, after training
+                log_positions = {'x': [inputs[0]], 'y': [inputs[1]], 'z': [inputs[2]]}
+                log_velocities = {'vx': [], 'vy': []}
+
                 print("\nNew episode started\n")
 
             cont_steps += 1
@@ -77,6 +94,11 @@ class AgentNode:
         inputs[2] /= self.info_dict['max_height']
         inputs[3:] /= self.info_dict['max_vel_xy']
         return inputs
+
+    def log(self, positions, velocities):
+        filename = '/test_log_' + str(datetime.now()).split(".")[0] + ".pkl"
+        with open(self.path_logs+filename, "wb") as pkl_f:
+            pickle.dump([positions, velocities], pkl_f)
 
  
 def spin_thread(node):

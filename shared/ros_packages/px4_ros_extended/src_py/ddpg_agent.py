@@ -85,7 +85,7 @@ class AgentNode:
                 if evaluating:
                     cont_test += 1
                     print("Evaluation episode " + str(cont_test))
-                    if cont_test > self.info_dict['evaluate_ep']:
+                    if cont_test >= self.info_dict['evaluate_ep']:
                         cont_test = 0
                         mean_reward_eval = np.mean(self.memory.acc_rewards_test[-self.info_dict['evaluate_ep']:])
                         
