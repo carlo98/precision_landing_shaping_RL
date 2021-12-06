@@ -22,12 +22,13 @@ RUN apt-get update \
 	&& apt-get clean autoclean \
 	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*
 
-# install ros2 desktop
+# install ros2 desktop, added "gazebo-ros-pkgs for collision detection
 RUN apt-get install --quiet --no-install-recommends -y \
 		ros-$ROS_DISTRO-desktop \
 		ros-$ROS_DISTRO-launch-testing-ament-cmake \
 		ros-$ROS_DISTRO-ros2bag \
 		ros-$ROS_DISTRO-rosidl-generator-dds-idl \
+        ros-$ROS_DISTRO-gazebo-ros-pkgs \
 	&& apt-get -y autoremove \
 	&& apt-get clean autoclean \
 	&& rm -rf /var/lib/apt/lists/{apt,dpkg,cache,log} /tmp/* /var/tmp/*

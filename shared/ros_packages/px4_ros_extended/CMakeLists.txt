@@ -22,6 +22,7 @@ find_package(rclcpp REQUIRED)
 find_package(px4_msgs REQUIRED)
 find_package(custom_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
+find_package(gazebo_msgs REQUIRED)
 find_package(rclpy REQUIRED)
 
 get_filename_component(PX4_MSGS_DIR "../" ABSOLUTE BASE_DIR ${px4_msgs_DIR})
