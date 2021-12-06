@@ -87,8 +87,13 @@ cd /src/shared
 Once gazebo is started in a new terminal run
 ```
 cd /src/shared
-./launch_test_ddpg.sh
+./launch_test_ddpg.sh N  # N: ID of the run that you want to load
 ```
+
+#### Results
+The position and velocities for each episode of test are saved in the folder "shared/test_logs".
+
+You can retrieve that information as shown in the jupyter notebook "shared/Log Analysis.ipynb".
 
 
 ### Speed-up & Useful PX4 Parameters <a name="speed"></a>

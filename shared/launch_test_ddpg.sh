@@ -12,7 +12,7 @@ tmux send-keys "micrortps_agent -t UDP" C-m
 sleep 2
 
 tmux new-window -t $SESSION:1 -n 'env + agent'
-tmux send-keys "ros2 run px4_ros_extended test_ddpg_agent.py" C-m
+tmux send-keys "ros2 run px4_ros_extended test_ddpg_agent.py $1" C-m
 
 tmux split-window -h -t $SESSION:1
 tmux send-keys "ros2 run px4_ros_extended env" C-m

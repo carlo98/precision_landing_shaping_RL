@@ -6,6 +6,8 @@ import torch
 import threading
 import sys
 import pickle
+import os
+import argparse
 from datetime import datetime
 
 # ROS
@@ -20,7 +22,7 @@ from env_wrapper import EnvWrapperNode
 
 
 class AgentNode:
-    def __init__(self, node):
+    def __init__(self, node, run_id):
 
         with open('/src/shared/ros_packages/px4_ros_extended/src_py/params.yaml') as info:
             self.info_dict = yaml.load(info, Loader=yaml.SafeLoader)
@@ -36,9 +38,12 @@ class AgentNode:
                          tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'],
                          epochs=self.info_dict['epochs'])
 
-        self.ddpg.load_models(1, best=True)
+        self.ddpg.load_models(run_id, best=True)
+        self.run_id = run_id
 
         self.path_logs = "/src/shared/test_logs"
+        if not os.path.isdir(self.path_logs):
+            os.mkdir(self.path_logs)
 
     def run(self):
 
@@ -52,7 +57,7 @@ class AgentNode:
         inputs = self.env.play_env()  # Start landing listening in src_cpp/env.cpp
         log_positions['x'].append(inputs[0])
         log_positions['y'].append(inputs[1])
-        log_positions['y'].append(inputs[2])
+        log_positions['z'].append(inputs[2])
 
         while True:
             normalized_input = self.normalize_input(np.copy(inputs))
@@ -65,7 +70,7 @@ class AgentNode:
             inputs, reward, done = self.env.act(action, self.normalize_input)
             log_positions['x'].append(inputs[0])
             log_positions['y'].append(inputs[1])
-            log_positions['y'].append(inputs[2])
+            log_positions['z'].append(inputs[2])
             episode_tot_reward += reward
 
             if (cont_steps % self.info_dict['num-steps'] == 0 and cont_steps > 0) or done:
@@ -96,7 +101,7 @@ class AgentNode:
         return inputs
 
     def log(self, positions, velocities):
-        filename = '/test_log_' + str(datetime.now()).split(".")[0] + ".pkl"
+        filename = '/test_log_' + str(self.run_id) + "_" + str(datetime.now()).split(".")[0] + ".pkl"
         with open(self.path_logs+filename, "wb") as pkl_f:
             pickle.dump([positions, velocities], pkl_f)
 
@@ -106,10 +111,14 @@ def spin_thread(node):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('run_id', type=int, help="Id of run to be loaded")
+    args = parser.parse_args()
+
     print("Starting Agent and Env Wrapper")
     rclpy.init(args=None)
     m_node = rclpy.create_node('agent_node')
-    gsNode = AgentNode(m_node)
+    gsNode = AgentNode(m_node, args.run_id)
     x = threading.Thread(target=spin_thread, args=(m_node,))
     x.start()
     gsNode.run()
