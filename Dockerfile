@@ -60,7 +60,7 @@ RUN colcon mixin add default https://raw.githubusercontent.com/colcon/colcon-mix
 	
 WORKDIR /src
 # Repository forked in order to avoid by default "missing RC" failsafe when in offboard mode
-RUN git clone https://github.com/carlo98/PX4-Autopilot.git
+RUN git clone --branch rcl_except_4 https://github.com/carlo98/PX4-Autopilot.git
 
 WORKDIR /src/PX4-Autopilot
 RUN HEADLESS=1 make px4_sitl_rtps gazebo
