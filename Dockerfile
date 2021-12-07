@@ -64,6 +64,8 @@ WORKDIR /src
 RUN git clone --branch rcl_except_4 https://github.com/carlo98/PX4-Autopilot.git
 
 WORKDIR /src/PX4-Autopilot
+RUN rm Tools/sitl_gazebo/models/iris/iris.sdf.jinja
+RUN mv iris.sdf.jinja Tools/sitl_gazebo/models/iris/
 RUN HEADLESS=1 make px4_sitl_rtps gazebo
 
 WORKDIR /

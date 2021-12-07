@@ -32,11 +32,12 @@ class AgentNode:
         self.env = EnvWrapperNode(node, self.info_dict['obs_shape'], self.info_dict['max_height'], self.info_dict['max_side'],
                                   self.info_dict['max_vel_z'], self.info_dict['max_vel_xy'])
         self.memory = Memory(self.info_dict['max_memory_len'])
-        self.ddpg = DDPG(self.info_dict['obs_shape'], self.info_dict['action_space'], self.memory,
+        self.ddpg = DDPG(self.info_dict['obs_shape'], self.info_dict['action_space'], self.memory, self.info_dict['model'],
                          lr_actor=self.info_dict['lr_actor'], lr_critic=self.info_dict['lr_critic'], gamma=self.info_dict['gamma'],
                          tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'],
                          epochs=self.info_dict['epochs'])
 
+        self.eval_noise = self.info_dict['eval_noise']
         self.start_time = time.time()
 
     def train(self):
@@ -61,7 +62,7 @@ class AgentNode:
             
             with torch.no_grad():
                 if evaluating:  # Evaluate model
-                    inputs = np.random.normal(loc=inputs, scale=1.0)  # During evaluation adding noise to the state, Gaussian (0, 1)
+                    inputs = np.random.normal(loc=inputs, scale=self.eval_noise)  # During evaluation adding noise to the state
                     normalized_input = self.normalize_input(np.copy(inputs))
                     action = self.ddpg.get_exploitation_action(normalized_input)
                 else:

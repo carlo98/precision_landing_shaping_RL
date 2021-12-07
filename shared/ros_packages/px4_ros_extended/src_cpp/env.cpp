@@ -168,6 +168,7 @@ void EnvNode::agent_odom_pub()
     this->float32Vector.push_back(this->z);
     this->float32Vector.push_back(this->vx);
     this->float32Vector.push_back(this->vy);
+    this->float32Vector.push_back(this->vz);
 
     this->float32Msg.data = this->float32Vector;
     this->agent_odom_publisher->publish(this->float32Msg);

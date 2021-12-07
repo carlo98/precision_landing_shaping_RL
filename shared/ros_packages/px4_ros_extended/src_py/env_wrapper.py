@@ -39,7 +39,6 @@ class EnvWrapperNode:
         self.reset = True
         self.play = False
 
-        self.eps_pos_z = 0.14
         self.eps_pos_xy = 0.80  # Drone can land on a 1x1 (m) target
         self.eps_vel_xy = 0.05
         self.max_vel_z = max_vel_z
@@ -47,8 +46,7 @@ class EnvWrapperNode:
         self.state_shape = state_shape
 
     def vehicle_odometry_callback(self, obs):
-        # 0--x, 1--y, 2--z, 3--vx, 4--vy
-        self.state = -np.array(obs.data)
+        self.state = -np.array(obs.data[:self.state_shape])
 
     def act(self, action, normalize):
     
@@ -71,7 +69,7 @@ class EnvWrapperNode:
                 pass
                 
         new_state = np.copy(self.state)
-        reward, done = self.reward.get_reward(new_state, normalize(np.copy(new_state)), action, self.landed, self.eps_pos_z, self.eps_pos_xy, self.eps_vel_xy)
+        reward, done = self.reward.get_reward(new_state, normalize(np.copy(new_state)), action, self.landed, self.eps_pos_xy, self.eps_vel_xy)
 
         self.action_received = False
         return new_state, reward, done

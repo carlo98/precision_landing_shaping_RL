@@ -6,11 +6,12 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 import DDPG.utils as utils
-from DDPG.model_paper import Critic, Actor
+from DDPG.models import Critic_paper, Actor_paper, Critic_small, Actor_small
 
 
 class DDPG:
-    def __init__(self, state_dim, action_dim, ram, lr_actor=0.0001, lr_critic=0.001, gamma=0.99, tau=0.001, batch_size=128, epochs=3):
+    def __init__(self, state_dim, action_dim, ram, model, lr_actor=0.0001, lr_critic=0.001, gamma=0.99, tau=0.001,
+                 batch_size=128, epochs=3):
         """
         :param state_dim: Dimensions of state (int)
         :param action_dim: Dimension of action (int)
@@ -23,12 +24,19 @@ class DDPG:
         self.iter = 0
         self.noise = utils.OrnsteinUhlenbeckActionNoise(self.action_dim)
 
-        self.actor = Actor(self.state_dim, self.action_dim).float()
-        self.target_actor = Actor(self.state_dim, self.action_dim).float()
+        if model == "paper":
+            actor = Actor_paper
+            critic = Critic_paper
+        elif model == "small":
+            actor = Actor_small
+            critic = Critic_small
+
+        self.actor = actor(self.state_dim, self.action_dim).float()
+        self.target_actor = actor(self.state_dim, self.action_dim).float()
         self.actor_optimizer = torch.optim.Adam(self.actor.parameters(), lr_actor)
 
-        self.critic = Critic(self.state_dim, self.action_dim).float()
-        self.target_critic = Critic(self.state_dim, self.action_dim).float()
+        self.critic = critic(self.state_dim, self.action_dim).float()
+        self.target_critic = critic(self.state_dim, self.action_dim).float()
         self.critic_optimizer = torch.optim.Adam(self.critic.parameters(), lr_critic)
 
         utils.hard_update(self.target_actor, self.actor)

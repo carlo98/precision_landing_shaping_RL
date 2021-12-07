@@ -16,7 +16,7 @@ class Reward:
         self.previous_shaping = self.coeffs[0] * np.sqrt(obs[0] ** 2 + obs[1] ** 2) + \
                                 self.coeffs[1] * np.sqrt(obs[3] ** 2 + obs[4] ** 2)
 
-    def get_reward(self, obs, norm_obs, action, landed, eps_pos_z, eps_pos_xy, eps_vel_xy):
+    def get_reward(self, obs, norm_obs, action, landed, eps_pos_xy, eps_vel_xy):
         done = False
 
         c = 0.0
