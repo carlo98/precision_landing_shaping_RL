@@ -7,9 +7,6 @@ from std_msgs.msg import Int64
 import rclpy
 
 # Gazebo
-from rclpy.qos import QoSDurabilityPolicy
-from rclpy.qos import QoSReliabilityPolicy
-from rclpy.qos import QoSProfile
 from gazebo_msgs.msg import ContactsState
 
 # Custom msgs
@@ -20,7 +17,7 @@ class EnvWrapperNode:
     def __init__(self, node, state_shape, max_height, max_side, max_vel_z, max_vel_xy):
         self.node = node
 
-        imu_qos = rclpy.qos.QoSPresetProfiles.get_from_short_key('sensor_data')
+        imu_qos = rclpy.qos.QoSPresetProfiles.get_from_short_key('sensor_data')  # Quality of Service
         self.bumper_subscriber = self.node.create_subscription(ContactsState, "/bumper_iris",
                                                                self.check_landed_callback, imu_qos)
         self.vehicle_odometry_subscriber = self.node.create_subscription(Float32MultiArray, '/agent/odom',
@@ -31,6 +28,7 @@ class EnvWrapperNode:
                                                                    self.play_reset_callback, 1)
         self.agent_action_received_subscriber = self.node.create_subscription(Int64, "/agent/action_received",
                                                                               self.action_received_callback, 1)
+        self.gazebo_down_publisher = self.node.create_publisher(Int64, "/env/gazebo_down", 1)
 
         self.reward = Reward(max_height, max_side)
 
@@ -54,13 +52,12 @@ class EnvWrapperNode:
 
     def act(self, action, normalize):
     
-        while not self.landed_received:  # Wait for check_landed_callback
-            pass
         self.landed_received = False
 
         if not self.landed:
-            vel_z = 0.6 if self.state[2] > 1.0 else 0.9*self.state[2]
-            if np.abs(self.state[2]) <= 0.50:
+            abs_height = np.abs(self.state[2])
+            vel_z = 0.6 if abs_height > 1.0 else 0.9*abs_height
+            if abs_height <= 0.50:
                 vel_z = 0.25
             action_msg = Float32MultiArray()
             action_msg.data = [-action[0] * self.max_vel_xy, -action[1] * self.max_vel_xy, -vel_z]  # Fixed z velocity
@@ -83,7 +80,6 @@ class EnvWrapperNode:
         self.action_received = msg.data == 1
 
     def check_landed_callback(self, msg):
-        print(self.landed)
         self.landed = len(msg.states) > 0
         self.landed_received = True
 
@@ -113,3 +109,11 @@ class EnvWrapperNode:
     def play_reset_callback(self, msg):  # Used for synchronization with gazebo
         if msg.data[1] == 0:
             self.reset = False
+
+    def shutdown_gazebo(self):
+        """
+        Shutdown message to Gazebo Node
+        """
+        msg = Int64()
+        msg.data = 1
+        self.gazebo_down_publisher.publish(msg)

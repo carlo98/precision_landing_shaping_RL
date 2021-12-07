@@ -17,6 +17,8 @@ class GazeboRunnerNode:
         self.vehicle_odometry_subscriber = self.node.create_subscription(VehicleOdometry, '/fmu/vehicle_odometry/out',
                                                                          self.vehicle_odometry_callback, 1)
         self.resetting_publisher = self.node.create_publisher(Int64, '/env/resetting', 1)
+        self.gazebo_down_publisher = self.node.create_subscription(Int64, "/env/gazebo_down",
+                                                                   self.gazebo_down_callback, 1)
 
         # Look for "connection closed by client"
         self.timer_check_connection = self.node.create_timer(1, self.check_connection)  # 1Hz
@@ -68,6 +70,11 @@ class GazeboRunnerNode:
         if time.time() - self.start_time_no_connection > 5.0:
             self.kill_gazebo()
             self.start_gazebo()
+
+    def gazebo_down_callback(self, msg):
+        if msg.data == 1:
+            self.kill_gazebo()
+            rclpy.shutdown()
 
 
 if __name__ == '__main__':

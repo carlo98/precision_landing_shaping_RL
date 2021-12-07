@@ -39,9 +39,13 @@ class AgentNode:
                          epochs=self.info_dict['epochs'])
 
         self.ddpg.load_models(run_id, best=True)
-        self.run_id = run_id
 
-        self.path_logs = "/src/shared/test_logs"
+        self.run_id = run_id
+        base_dir = "/src/shared/test_logs"
+        if not os.path.isdir(base_dir):
+            os.mkdir(base_dir)
+
+        self.path_logs = os.path.join(base_dir, str(self.run_id))
         if not os.path.isdir(self.path_logs):
             os.mkdir(self.path_logs)
 

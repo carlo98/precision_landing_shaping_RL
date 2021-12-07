@@ -6,13 +6,10 @@ SESSION=$USER
 tmux new-session -d -s=$SESSION
 
 # Create one window (-t -> target session, -n -> window name)
-tmux new-window -t $SESSION:2 -n 'micrortps'
-tmux send-keys "micrortps_agent -t UDP" C-m
-
-sleep 2
-
 tmux new-window -t $SESSION:1 -n 'env + agent'
 tmux send-keys "ros2 run px4_ros_extended ddpg_agent.py -p /use_sim_time:=true" C-m
+
+sleep 3  # Waiting for micrortps_agent process started by agent
 
 tmux split-window -h -t $SESSION:1
 tmux send-keys "ros2 run px4_ros_extended env -p /use_sim_time:=true" C-m

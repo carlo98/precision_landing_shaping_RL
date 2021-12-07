@@ -207,13 +207,15 @@ void EnvNode::new_position(){
     if(sign >= 0.5){
         this->w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
     } else {
-        this->w_x = - 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
+        this->w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
+        this->w_x = -this->w_x;
     }
     sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
     if(sign >= 0.5){
         this->w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
     } else {
-        this->w_y = - 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
+        this->w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
+        this->w_x = -this->w_y;
     }
     this->w_z = this->min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_z-this->min_z)));
 

@@ -6,6 +6,7 @@ import time
 import torch
 import threading
 import sys
+import subprocess
 
 # ROS
 import rclpy
@@ -51,7 +52,6 @@ class AgentNode:
             pass
 
         inputs = self.env.play_env()  # Start landing listening in src_cpp/env.cpp
-        previous_obs = self.normalize_input(np.copy(inputs))
         start_time_episode = time.time()
 
         while episode_num < self.info_dict['num_env_episodes']:
@@ -106,7 +106,7 @@ class AgentNode:
                     print("Training ended")
                     
                 if episode_num != 0 and episode_num % self.info_dict['log_interval_episodes'] == 0:
-                    print("Saving mean and std of rewards in file.")
+                    print("Saving rewards in file.")
                     self.memory.log()
                     print("Saving model.")
                     self.ddpg.save_models(self.memory.id_file, best=False)
@@ -117,13 +117,16 @@ class AgentNode:
 
                 inputs = self.env.play_env()  # Restart landing listening, after training
                 print("\nNew episode started\n")
-                previous_obs = self.normalize_input(np.copy(inputs))
                 start_time_episode = time.time()
                 
             cont_steps += 1
 
+        print("Saving rewards in file.")
+        self.memory.log()
         print("Saving model...\nTotal time: ", time.time()-self.start_time)
         self.ddpg.save_models(self.memory.id_file)
+
+        self.env.shutdown_gazebo()
 
     def normalize_input(self, inputs):
         inputs[:2] /= self.info_dict['max_side']
@@ -137,6 +140,11 @@ def spin_thread(node):
 
 
 if __name__ == '__main__':
+    print("Starting micrortps agent")
+
+    micrortps_agent = subprocess.Popen(["micrortps_agent", "-t", "UDP"])
+    time.sleep(2)
+
     print("Starting Agent and Env Wrapper")
     rclpy.init(args=None)
     m_node = rclpy.create_node('agent_node')
@@ -144,4 +152,6 @@ if __name__ == '__main__':
     x = threading.Thread(target=spin_thread, args=(m_node,))
     x.start()
     gsNode.train()
+    rclpy.shutdown()  # Closing Env Wrapper Node
     x.join()
+    micrortps_agent.kill()  # Closing micrortps agent
