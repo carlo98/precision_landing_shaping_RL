@@ -14,7 +14,7 @@ from custom_msgs.msg import Float32MultiArray
 
 
 class EnvWrapperNode:
-    def __init__(self, node, state_shape, max_height, max_side, max_vel_z, max_vel_xy):
+    def __init__(self, node, state_shape, max_height, max_side, max_vel_z, max_vel_xy, eps_pos_xy):
         self.node = node
 
         imu_qos = rclpy.qos.QoSPresetProfiles.get_from_short_key('sensor_data')  # Quality of Service
@@ -39,7 +39,7 @@ class EnvWrapperNode:
         self.reset = True
         self.play = False
 
-        self.eps_pos_xy = 0.30  # Drone can land on a 0.3x0.3 (m) target
+        self.eps_pos_xy = eps_pos_xy
         self.eps_vel_xy = 0.05
         self.max_vel_z = max_vel_z
         self.max_vel_xy = max_vel_xy
