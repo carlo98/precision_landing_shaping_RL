@@ -1,6 +1,6 @@
 # General
 action_space: 2
-obs_shape: 6
+obs_shape: 5  # 5 or 6, add vz
 num_env_episodes: 6009  # Keep it a multiple of evaluate_freq and add evaluate_ep at the end
 train_freq: 1  # In episodes
 num-steps: 350
@@ -17,7 +17,7 @@ test_window_reward: 3
 evaluate_freq: 500
 evaluate_ep: 9  # Keep this a multiple of test_window_reward
 eval_noise: 0.2  # std for gaussian evaluation noise
-model: "small"  # "paper" or "small"
+model: "paper"  # "paper" or "small"
 
 # DDPG
 epochs: 1

@@ -48,7 +48,7 @@ RUN pip3 install --upgrade \
 		pytest-repeat \
 		pytest-rerunfailures
 		
-RUN pip3 install torch pandas jupyter-notebook -y
+RUN pip3 install torch pandas
 
 # bootstrap rosdep
 RUN rosdep update
@@ -64,6 +64,7 @@ WORKDIR /src
 RUN git clone --branch rcl_except_4 https://github.com/carlo98/PX4-Autopilot.git
 
 WORKDIR /src/PX4-Autopilot
+RUN HEADLESS=1 make px4_sitl_rtps gazebo
 RUN rm Tools/sitl_gazebo/models/iris/iris.sdf.jinja
 RUN mv iris.sdf.jinja Tools/sitl_gazebo/models/iris/
 RUN HEADLESS=1 make px4_sitl_rtps gazebo

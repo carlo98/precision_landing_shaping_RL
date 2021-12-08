@@ -71,20 +71,20 @@ represents the unique-id of the session.
 ### Test <a name="test"></a>
 Open 2 terminals and run the docker in each one of them, as explained above.
 
-To start Gazebo:
+In the first one run:
 ```
 ros2 run px4_ros_extended gazebo_runner.py --test
 ```
 
 #### Baseline
-Once gazebo is started in a new terminal run
+In the second one run
 ```
 cd /src/shared
 ./launch_baseline.sh
 ```
 
 #### Agent
-Once gazebo is started in a new terminal run
+In the second one run
 ```
 cd /src/shared
 ./launch_test_ddpg.sh N  # N: ID of the run that you want to load

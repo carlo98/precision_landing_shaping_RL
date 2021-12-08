@@ -7,6 +7,7 @@ import threading
 import sys
 import pickle
 import os
+import time
 import argparse
 from datetime import datetime
 
@@ -22,7 +23,7 @@ from env_wrapper import EnvWrapperNode
 
 
 class AgentNode:
-    def __init__(self, node, run_id):
+    def __init__(self, node, run_id, model_name, obs_shape):
 
         with open('/src/shared/ros_packages/px4_ros_extended/src_py/params.yaml') as info:
             self.info_dict = yaml.load(info, Loader=yaml.SafeLoader)
@@ -30,10 +31,10 @@ class AgentNode:
         torch.manual_seed(self.info_dict['seed'])
         torch.cuda.manual_seed_all(self.info_dict['seed'])
 
-        self.env = EnvWrapperNode(node, self.info_dict['obs_shape'], self.info_dict['max_height'], self.info_dict['max_side'],
+        self.env = EnvWrapperNode(node, obs_shape, self.info_dict['max_height'], self.info_dict['max_side'],
                                   self.info_dict['max_vel_z'], self.info_dict['max_vel_xy'])
         self.memory = Memory(self.info_dict['max_memory_len'])
-        self.ddpg = DDPG(self.info_dict['obs_shape'], self.info_dict['action_space'], self.memory,
+        self.ddpg = DDPG(obs_shape, self.info_dict['action_space'], self.memory, model_name,
                          lr_actor=self.info_dict['lr_actor'], lr_critic=self.info_dict['lr_critic'], gamma=self.info_dict['gamma'],
                          tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'],
                          epochs=self.info_dict['epochs'])
@@ -59,6 +60,7 @@ class AgentNode:
             pass
 
         inputs = self.env.play_env()  # Start landing listening in src_cpp/env.cpp
+        start_time = time.time()  # Used for plots
         log_positions['x'].append(inputs[0])
         log_positions['y'].append(inputs[1])
         log_positions['z'].append(inputs[2])
@@ -88,11 +90,12 @@ class AgentNode:
                 self.env.reset_env()
                     
                 episode_tot_reward = 0.0
-                self.log(log_positions, log_velocities)
+                self.log(log_positions, log_velocities, time.time()-start_time)
 
                 inputs = self.env.play_env()  # Restart landing listening, after training
                 log_positions = {'x': [inputs[0]], 'y': [inputs[1]], 'z': [inputs[2]]}
                 log_velocities = {'vx': [], 'vy': []}
+                start_time = time.time()
 
                 print("\nNew episode started\n")
 
@@ -104,10 +107,10 @@ class AgentNode:
         inputs[3:] /= self.info_dict['max_vel_xy']
         return inputs
 
-    def log(self, positions, velocities):
+    def log(self, positions, velocities, passed_time):
         filename = '/test_log_' + str(self.run_id) + "_" + str(datetime.now()).split(".")[0] + ".pkl"
         with open(self.path_logs+filename, "wb") as pkl_f:
-            pickle.dump([positions, velocities], pkl_f)
+            pickle.dump([positions, velocities, passed_time], pkl_f)
 
  
 def spin_thread(node):
@@ -117,12 +120,14 @@ def spin_thread(node):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('run_id', type=int, help="Id of run to be loaded")
+    parser.add_argument('model', type=str, help="Name of the model used. Either 'paper' or 'small'")
+    parser.add_argument('obs_shape', type=int, help="Shape of observation. Either 5 or 6")
     args = parser.parse_args()
 
     print("Starting Agent and Env Wrapper")
     rclpy.init(args=None)
     m_node = rclpy.create_node('agent_node')
-    gsNode = AgentNode(m_node, args.run_id)
+    gsNode = AgentNode(m_node, args.run_id, args.model, args.obs_shape)
     x = threading.Thread(target=spin_thread, args=(m_node,))
     x.start()
     gsNode.run()

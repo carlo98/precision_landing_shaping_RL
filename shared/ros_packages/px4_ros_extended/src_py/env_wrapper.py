@@ -39,7 +39,7 @@ class EnvWrapperNode:
         self.reset = True
         self.play = False
 
-        self.eps_pos_xy = 0.80  # Drone can land on a 1x1 (m) target
+        self.eps_pos_xy = 0.30  # Drone can land on a 0.3x0.3 (m) target
         self.eps_vel_xy = 0.05
         self.max_vel_z = max_vel_z
         self.max_vel_xy = max_vel_xy
