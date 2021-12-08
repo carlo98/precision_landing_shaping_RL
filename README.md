@@ -87,8 +87,9 @@ cd /src/shared
 In the second one run
 ```
 cd /src/shared
-./launch_test_ddpg.sh N  # N: ID of the run that you want to load
+./launch_test_ddpg.sh N1 <model> N2
 ```
+Where N1 is the run_id, 'model' is the name of the model to be used and N2 is the state shape.
 
 #### Results
 The position and velocities for each episode of test are saved in the folder "shared/test_logs".
