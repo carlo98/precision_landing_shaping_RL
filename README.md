@@ -1,10 +1,9 @@
 # Precision landing with physics-informed reinforcement learning
-Physics-informed deep reinforcement learning for drone precision landing, docker container for simulation in 
-Gazebo-ROS2 dashing with PX4-Autopilot controller. 
+Physics-informed deep reinforcement learning for drone precision landing, docker container for simulation in Gazebo-ROS2 
+dashing with PX4-Autopilot controller. 
 
 Project developed, starting from a problem of [DRAFT PoliTO](https://www.draftpolito.it/), as part of the course 
-"AI in Industry" of the University 
-of Bologna.
+"AI in Industry" of the University of Bologna.
 
 This repository is a work in progress, take a look at the [Project Board](https://github.com/carlo98/precision_landing_physics_informed_RL/projects/1) 
 to follow the progress.
@@ -14,7 +13,8 @@ to follow the progress.
 2. [Usage](#usage)
    1. [Train](#train)
    2. [Test](#test)
-   3. [Speed-up](#speed)
+   3. [Code changes](#changes)
+   4. [Speed-up](#speed)
 3. [References](#references)
 
 ## Setup <a name="setup"></a>
@@ -32,8 +32,7 @@ you just need to follow the rest of the setup and the following times it won't h
 Once it has finished, in the docker run the following commands, in order to build the packages:
 ```
 cd /src/shared/ros_packages
-colcon build --packages-select px4_msgs custom_msgs
-colcon build --packages-select px4_ros_com px4_ros_extended
+colcon build --packages-select px4_msgs custom_msgs px4_ros_com px4_ros_extended
 ```
 
 ## Usage <a name="usage"></a>
@@ -99,6 +98,18 @@ The position and velocities for each episode of test are saved in the folder "sh
 
 You can retrieve that information as shown in the jupyter notebook "shared/Log Analysis.ipynb".
 
+
+### Code Changes <a name="changes"></a>
+All the ROS nodes and useful scripts can be found in "shared/ros_packages/px4_ros_extended"; of course, it is possible 
+to work on them.
+
+In order to use the changes during training, one should remember to build the "px4_ros_extended" package every time one 
+of the nodes' scripts are modified.
+
+```
+cd /src/shared/ros_packages
+colcon build --packages-select px4_ros_extended
+```
 
 ### Speed-up & Useful PX4 Parameters <a name="speed"></a>
 In order to speed-up the simulation one can start it with these commands, they are already used in the bash script and 
