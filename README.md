@@ -59,8 +59,8 @@ ros2 run px4_ros_extended gazebo_runner.py --train
 In "shared/ros_packages/px4_ros_extended/src_py/params.yaml" you can set a few parameters, all of them but 
 "train_window_reward" and "test_window_reward", that are used by the jupyter notebook, are used by the agent.
 
-Pay particular attention to the model name, the target dimension and the observation shape, as the test script will need 
-to know these values.
+Pay particular attention to the model name, the target dimension and the observation and action shape, as the test script 
+will need to know these values.
 
 #### Plots and Models
 In the folder "shared/logs" are saved the rewards in pickle files, you can have a look at the jupyter notebook 
@@ -89,9 +89,9 @@ cd /src/shared
 In the second one run
 ```
 cd /src/shared
-./launch_test_ddpg.sh N1 <model> N2
+./launch_test_ddpg.sh N1 <model> N2 N3
 ```
-Where N1 is the run_id, 'model' is the name of the model to be used and N2 is the state shape.
+Where N1 is the run_id, 'model' is the name of the model to be used, N2 is the state shape and N3 is the action shape.
 
 #### Results
 The position and velocities for each episode of test are saved in the folder "shared/test_logs".
