@@ -14,7 +14,7 @@ from custom_msgs.msg import Float32MultiArray
 
 
 class EnvWrapperNode:
-    def __init__(self, node, state_shape, max_height, max_side, max_vel_z, max_vel_xy, eps_pos_xy):
+    def __init__(self, node, state_shape, action_shape, max_height, max_side, max_vel_z, max_vel_xy, eps_pos_xy):
         self.node = node
 
         imu_qos = rclpy.qos.QoSPresetProfiles.get_from_short_key('sensor_data')  # Quality of Service
@@ -44,6 +44,7 @@ class EnvWrapperNode:
         self.max_vel_z = max_vel_z
         self.max_vel_xy = max_vel_xy
         self.state_shape = state_shape
+        self.action_shape = action_shape
 
     def vehicle_odometry_callback(self, obs):
         self.state = -np.array(obs.data[:self.state_shape])
@@ -53,10 +54,13 @@ class EnvWrapperNode:
         self.landed_received = False
 
         if not self.landed:
-            abs_height = np.abs(self.state[2])
-            vel_z = 0.6 if abs_height > 1.0 else 0.9*abs_height
-            if abs_height <= 0.50:
-                vel_z = 0.25
+            if self.action_shape == 2:  # Predicting vx and vy
+                abs_height = np.abs(self.state[2])
+                vel_z = 0.6 if abs_height > 1.0 else 0.9*abs_height
+                if abs_height <= 0.50:
+                    vel_z = 0.25
+            elif self.action_shape == 3:  # Predictiong vx, vy and vz
+                vel_z = action[2] * self.max_vel_z
             action_msg = Float32MultiArray()
             action_msg.data = [-action[0] * self.max_vel_xy, -action[1] * self.max_vel_xy, -vel_z]  # Fixed z velocity
             self.agent_vel_publisher.publish(action_msg)

@@ -31,7 +31,7 @@ class AgentNode:
         torch.manual_seed(self.info_dict['seed'])
         torch.cuda.manual_seed_all(self.info_dict['seed'])
 
-        self.env = EnvWrapperNode(node, obs_shape, self.info_dict['max_height'], self.info_dict['max_side'],
+        self.env = EnvWrapperNode(node, obs_shape, self.info_dict['action_space'], self.info_dict['max_height'], self.info_dict['max_side'],
                                   self.info_dict['max_vel_z'], self.info_dict['max_vel_xy'], self.info_dict['eps_pos_xy'])
         self.memory = Memory(self.info_dict['max_memory_len'])
         self.ddpg = DDPG(obs_shape, self.info_dict['action_space'], self.memory, model_name,
@@ -54,6 +54,8 @@ class AgentNode:
 
         log_positions = {'x': [], 'y': [], 'z': []}  # Saving position from target in x,y,z-axis
         log_velocities = {'vx': [], 'vy': []}  # Saving relative velocity to target in x,y-axis (actions)
+        if self.info_dict['action_space'] == 3:  # Predicting also vz
+            log_velocities['vz'] = []
         cont_steps = 0
         episode_tot_reward = 0
         while self.env.reset:  # Waiting for env to stop resetting
@@ -70,8 +72,10 @@ class AgentNode:
             with torch.no_grad():
                 action = self.ddpg.get_exploitation_action(normalized_input)
 
-            log_velocities['vx'].append(inputs[3]*self.info_dict['max_vel_xy'])
-            log_velocities['vy'].append(inputs[4]*self.info_dict['max_vel_xy'])
+            log_velocities['vx'].append(action[0]*self.info_dict['max_vel_xy'])
+            log_velocities['vy'].append(action[1]*self.info_dict['max_vel_xy'])
+            if self.info_dict['action_space'] == 3:  # Predicting also vz
+                log_velocities['vz'].append(action[2]*self.info_dict['max_vel_z'])
 
             inputs, reward, done = self.env.act(action, self.normalize_input)
             log_positions['x'].append(inputs[0])
@@ -95,6 +99,8 @@ class AgentNode:
                 inputs = self.env.play_env()  # Restart landing listening, after training
                 log_positions = {'x': [inputs[0]], 'y': [inputs[1]], 'z': [inputs[2]]}
                 log_velocities = {'vx': [], 'vy': []}
+                if self.info_dict['action_space'] == 3:  # Predicting also vz
+                    log_velocities['vz'] = []
                 start_time = time.time()
 
                 print("\nNew episode started\n")
