@@ -11,7 +11,7 @@ from std_msgs.msg import Int64
 
 
 class GazeboRunnerNode:
-    def __init__(self, node, train=True):
+    def __init__(self, node, train=True, headless=False):
         self.node = node
 
         self.vehicle_odometry_subscriber = self.node.create_subscription(VehicleOdometry, '/fmu/vehicle_odometry/out',
@@ -24,6 +24,7 @@ class GazeboRunnerNode:
         self.timer_check_connection = self.node.create_timer(1, self.check_connection)  # 1Hz
 
         self.train = train
+        self.headless = headless
         self.cont_takeoff_failing = 0
         self.state = []
         self.gazebo = None
@@ -52,8 +53,10 @@ class GazeboRunnerNode:
 
         if self.train:
             self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo", "PX4_SIM_SPEED_FACTOR=6", "HEADLESS=1"], cwd="/src/PX4-Autopilot")
-        else:
+        elif not self.train and not self.headless:
             self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo", "PX4_NO_FOLLOW_MODE=1"], cwd="/src/PX4-Autopilot")
+        elif not self.train and self.headless:
+            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo", "HEADLESS=1"], cwd="/src/PX4-Autopilot")
         time.sleep(5)
         self.cont_takeoff_failing = 0
         self.msg_reset_gazebo.data = 0  # Signaling to env that gazebo is ready
@@ -79,13 +82,17 @@ class GazeboRunnerNode:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    feature_parser = parser.add_mutually_exclusive_group(required=False)
-    feature_parser.add_argument('--train', dest='train', action='store_true')
-    feature_parser.add_argument('--test', dest='train', action='store_false')
+    feature_parser_1 = parser.add_mutually_exclusive_group(required=False)
+    feature_parser_1.add_argument('--train', dest='train', action='store_true')
+    feature_parser_1.add_argument('--test', dest='train', action='store_false')
+    feature_parser_2 = parser.add_mutually_exclusive_group(required=False)
+    feature_parser_2.add_argument('--headless', dest='headless', action='store_true')
+    feature_parser_2.add_argument('--no-headless', dest='headless', action='store_false')
     parser.set_defaults(train=True)
+    parser.set_defaults(headless=False)
     args = parser.parse_args()
 
     rclpy.init(args=None)
     m_node = rclpy.create_node('gazebo_runner_node')
-    gsNode = GazeboRunnerNode(m_node, args.train)
+    gsNode = GazeboRunnerNode(m_node, args.train, args.headless)
     rclpy.spin(m_node)

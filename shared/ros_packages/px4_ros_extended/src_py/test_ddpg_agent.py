@@ -23,7 +23,7 @@ from env_wrapper import EnvWrapperNode
 
 
 class AgentNode:
-    def __init__(self, node, run_id, model_name, obs_shape, act_shape):
+    def __init__(self, node, run_id, model_name, obs_shape, act_shape, num_episodes):
 
         with open('/src/shared/ros_packages/px4_ros_extended/src_py/params.yaml') as info:
             self.info_dict = yaml.load(info, Loader=yaml.SafeLoader)
@@ -41,6 +41,7 @@ class AgentNode:
 
         self.ddpg.load_models(run_id, best=True)
         self.act_shape = act_shape
+        self.num_episodes = num_episodes
 
         self.run_id = run_id
         base_dir = "/src/shared/test_logs"
@@ -53,10 +54,14 @@ class AgentNode:
 
     def run(self):
 
+        episode_num = 0
+
         log_positions = {'x': [], 'y': [], 'z': []}  # Saving position from target in x,y,z-axis
-        log_velocities = {'vx': [], 'vy': []}  # Saving relative velocity to target in x,y-axis (actions)
+        log_velocities = {'vx': [], 'vy': []}  # Saving relative velocity to target in x,y-axis
+        log_velocities_ref = {'vx': [], 'vy': []}  # Saving relative velocity to target in x,y-axis (actions)
         if self.act_shape == 3:  # Predicting also vz
             log_velocities['vz'] = []
+            log_velocities_ref['vz'] = []
         cont_steps = 0
         episode_tot_reward = 0
         while self.env.reset:  # Waiting for env to stop resetting
@@ -68,15 +73,18 @@ class AgentNode:
         log_positions['y'].append(inputs[1])
         log_positions['z'].append(inputs[2])
 
-        while True:
+        while episode_num < self.num_episodes:
             normalized_input = self.normalize_input(np.copy(inputs))
             with torch.no_grad():
                 action = self.ddpg.get_exploitation_action(normalized_input)
 
-            log_velocities['vx'].append(action[0]*self.info_dict['max_vel_xy'])
-            log_velocities['vy'].append(action[1]*self.info_dict['max_vel_xy'])
+            log_velocities['vx'].append(inputs[0]*self.info_dict['max_vel_xy'])
+            log_velocities['vy'].append(inputs[1]*self.info_dict['max_vel_xy'])
+            log_velocities_ref['vx'].append(action[0]*self.info_dict['max_vel_xy'])
+            log_velocities_ref['vy'].append(action[1]*self.info_dict['max_vel_xy'])
             if self.act_shape == 3:  # Predicting also vz
-                log_velocities['vz'].append(action[2]*self.info_dict['max_vel_z'])
+                log_velocities['vz'].append(inputs[2]*self.info_dict['max_vel_z'])
+                log_velocities_ref['vz'].append(action[2]*self.info_dict['max_vel_z'])
 
             inputs, reward, done = self.env.act(action, self.normalize_input)
             log_positions['x'].append(inputs[0])
@@ -95,14 +103,19 @@ class AgentNode:
                 self.env.reset_env()
                     
                 episode_tot_reward = 0.0
-                self.log(log_positions, log_velocities, time.time()-start_time)
+                self.log(log_positions, log_velocities, log_velocities_ref, time.time()-start_time)
 
                 inputs = self.env.play_env()  # Restart landing listening, after training
                 log_positions = {'x': [inputs[0]], 'y': [inputs[1]], 'z': [inputs[2]]}
                 log_velocities = {'vx': [], 'vy': []}
+                log_velocities_ref = {'vx': [], 'vy': []}
                 if self.act_shape == 3:  # Predicting also vz
                     log_velocities['vz'] = []
+                    log_velocities_ref['vz'] = []
                 start_time = time.time()
+                
+                cont_steps = 0
+                episode_num += 1
 
                 print("\nNew episode started\n")
 
@@ -114,10 +127,10 @@ class AgentNode:
         inputs[3:] /= self.info_dict['max_vel_xy']
         return inputs
 
-    def log(self, positions, velocities, passed_time):
+    def log(self, positions, velocities, velocities_ref, passed_time):
         filename = '/test_log_' + str(self.run_id) + "_" + str(datetime.now()).split(".")[0] + ".pkl"
         with open(self.path_logs+filename, "wb") as pkl_f:
-            pickle.dump([positions, velocities, passed_time], pkl_f)
+            pickle.dump([positions, velocities, velocities_ref, passed_time], pkl_f)
 
  
 def spin_thread(node):
@@ -130,12 +143,13 @@ if __name__ == '__main__':
     parser.add_argument('model', type=str, help="Name of the model used. Either 'paper' or 'small'")
     parser.add_argument('obs_shape', type=int, help="Shape of observation. Either 5 or 6")
     parser.add_argument('act_shape', type=int, help="Shape of action. Either 2 or 3")
+    parser.add_argument('num_episodes', type=int, default=150, help="NUmber of episodes")
     args = parser.parse_args()
 
     print("Starting Agent and Env Wrapper")
     rclpy.init(args=None)
     m_node = rclpy.create_node('agent_node')
-    gsNode = AgentNode(m_node, args.run_id, args.model, args.obs_shape, args.act_shape)
+    gsNode = AgentNode(m_node, args.run_id, args.model, args.obs_shape, args.act_shape, args.num_episodes)
     x = threading.Thread(target=spin_thread, args=(m_node,))
     x.start()
     gsNode.run()

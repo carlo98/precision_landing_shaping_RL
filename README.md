@@ -89,9 +89,9 @@ cd /src/shared
 In the second one run
 ```
 cd /src/shared
-./launch_test_ddpg.sh N1 <model> N2 N3
+./launch_test_ddpg.sh <run_id> <model> <obs_shape> <action_shape> <num_episodes>
 ```
-Where N1 is the run_id, 'model' is the name of the model to be used, N2 is the state shape and N3 is the action shape.
+Where 'model' is the name of the model to be used, 'paper' or 'small'.
 
 #### Results
 The position and velocities for each episode of test are saved in the folder "shared/test_logs".
