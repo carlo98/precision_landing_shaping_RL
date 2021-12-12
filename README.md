@@ -20,9 +20,8 @@ to follow the progress.
 ## Setup <a name="setup"></a>
 Modify the absolute paths in "run_docker.sh" to reflect the position of the repository on your computer.
 
-Build and start the docker, it will take same time:
+Build and start the docker, it will take same time, from the root of the repository run:
 ```
-cd ..  # Go back to the root of the repository
 sudo ./run_docker.sh build
 ```
 
