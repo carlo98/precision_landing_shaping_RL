@@ -15,9 +15,11 @@ to follow the progress.
    2. [Test](#test)
    3. [Code changes](#changes)
    4. [Speed-up](#speed)
-3. [References](#references)
+3. [Acknowledgments](#references)
 
 ## Setup <a name="setup"></a>
+Install [Docker](https://docs.docker.com/engine/install/).
+
 Modify the absolute paths in "run_docker.sh" to reflect the position of the repository on your computer.
 
 Build and start the docker, it will take same time, from the root of the repository run:
@@ -125,6 +127,8 @@ In order to avoid following the drone, used in "gazebo_runner.py --test"
 PX4_NO_FOLLOW_MODE=1 make px4_sitl_rtps gazebo
 ```
 
-## References <a name="references"></a>
+## Acknowledgments <a name="references"></a>
+The author(s) would like to acknowledge the contribution of the student team DRAFT PoliTO of the Politecnico di Torino, for supporting the research activity by providing technical advising and experimental equipment that helped the work with the simulator.
+
 The initial code for the DDPG algorithm has been taken from [this](https://github.com/vy007vikas/PyTorch-ActorCriticRL) 
 github repository.
