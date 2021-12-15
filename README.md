@@ -5,9 +5,6 @@ dashing with PX4-Autopilot controller.
 Project developed, starting from a problem of [DRAFT PoliTO](https://www.draftpolito.it/), as part of the course 
 "AI in Industry" of the University of Bologna.
 
-This repository is a work in progress, take a look at the [Project Board](https://github.com/carlo98/precision_landing_physics_informed_RL/projects/1) 
-to follow the progress.
-
 # Table of contents
 1. [Setup](#setup)
 2. [Usage](#usage)
