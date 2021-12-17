@@ -78,12 +78,12 @@ class AgentNode:
             with torch.no_grad():
                 action = self.ddpg.get_exploitation_action(normalized_input)
 
-            log_velocities['vx'].append(inputs[0]*self.info_dict['max_vel_xy'])
-            log_velocities['vy'].append(inputs[1]*self.info_dict['max_vel_xy'])
+            log_velocities['vx'].append(inputs[3]*self.info_dict['max_vel_xy'])
+            log_velocities['vy'].append(inputs[4]*self.info_dict['max_vel_xy'])
             log_velocities_ref['vx'].append(action[0]*self.info_dict['max_vel_xy'])
             log_velocities_ref['vy'].append(action[1]*self.info_dict['max_vel_xy'])
             if self.act_shape == 3:  # Predicting also vz
-                log_velocities['vz'].append(inputs[2]*self.info_dict['max_vel_z'])
+                log_velocities['vz'].append(inputs[5]*self.info_dict['max_vel_z'])
                 log_velocities_ref['vz'].append(action[2]*self.info_dict['max_vel_z'])
 
             inputs, reward, done = self.env.act(action, self.normalize_input)
