@@ -76,7 +76,7 @@ class AgentNode:
         while episode_num < self.num_episodes:
             normalized_input = self.normalize_input(np.copy(inputs))
             with torch.no_grad():
-                action = self.ddpg.get_exploitation_action(normalized_input)
+                action = self.ddpg.get_exploitation_action(normalized_input)[0]
 
             log_velocities['vx'].append(inputs[3]*self.info_dict['max_vel_xy'])
             log_velocities['vy'].append(inputs[4]*self.info_dict['max_vel_xy'])
@@ -98,7 +98,6 @@ class AgentNode:
                 else:
                     print("End episode")
                 print("Position x: " + str(-inputs[0]) + " y: " + str(-inputs[1]) + " z: " + str(-inputs[2]))
-                print("Acc reward: " + str(episode_tot_reward))
 
                 self.env.reset_env()
                     

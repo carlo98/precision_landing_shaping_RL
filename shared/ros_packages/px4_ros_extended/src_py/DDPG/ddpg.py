@@ -57,7 +57,7 @@ class DDPG:
         :param state: state (Numpy array)
         :return: sampled action (Numpy array)
         """
-        state = Variable(torch.from_numpy(state).float())
+        state = Variable(torch.from_numpy(state.reshape(-1, self.state_dim)).float())
         action = self.target_actor.forward(state).detach()
         return action.data.numpy()
 
@@ -68,7 +68,7 @@ class DDPG:
         :param n_steps: number of training steps, used to decrease exploration
         :return: sampled action (Numpy array)
         """
-        state = Variable(torch.from_numpy(state).float())
+        state = Variable(torch.from_numpy(state.reshape(-1, self.state_dim)).float())
         action = self.actor.forward(state).detach()
         new_action = action.data.numpy() + self.noise.sample(n_steps)
         return np.clip(new_action, -1.0, 1.0)

@@ -5,8 +5,8 @@ import numpy as np
 class Reward:
     def __init__(self, max_height, max_side):
         self.min_reward = -1
-        # Weights for pos, velocity, action, 2(3) x single action
-        self.coeffs = np.array([-100, -10, -1, 10, 10, 10])
+        # Weights for pos, velocity, action, 2(3) x single action, coef pos z
+        self.coeffs = np.array([-100, -10, -1, 10, 10, 10, -100])
         self.previous_shaping = 0.0
         
         self.max_height = max_height
@@ -51,12 +51,16 @@ class Reward:
                       self.coeffs[3] * c * (1 - np.abs(action[0])) + \
                       self.coeffs[4] * c * (1 - np.abs(action[1]))
         elif len(action) == 3:  # Predicting vx, vy, vz
-            shaping = self.coeffs[0] * np.sqrt(norm_obs[0] ** 2 + norm_obs[1] ** 2 + norm_obs[2] ** 2) + \
+            shaping = self.coeffs[0] * np.sqrt(norm_obs[0] ** 2 + norm_obs[1] ** 2) + \
                       self.coeffs[1] * np.sqrt(norm_obs[3] ** 2 + norm_obs[4] ** 2 + norm_obs[5] ** 2) + \
                       self.coeffs[2] * np.sqrt(action[0] ** 2 + action[1] ** 2 + action[2] ** 2) + \
                       self.coeffs[3] * c * (1 - np.abs(action[0])) + \
                       self.coeffs[4] * c * (1 - np.abs(action[1])) + \
                       self.coeffs[5] * c * (1 - np.abs(action[2]))
+                      
+            # Reward for position in z-axes should avoid hovering at z=0 if terrain is lower
+            if norm_obs[2] > 0.0:
+                shaping += self.coeffs[6] * np.sqrt(norm_obs[2] ** 2)  # pos z
 
         reward = shaping - self.previous_shaping
         self.previous_shaping = shaping
