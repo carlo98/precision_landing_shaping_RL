@@ -73,7 +73,7 @@ Open 2 terminals and run the docker in each one of them, as explained above.
 
 In the first one run:
 ```
-ros2 run px4_ros_extended gazebo_runner.py --test
+ros2 run px4_ros_extended gazebo_runner.py --test --headless
 ```
 
 #### Baseline
@@ -102,7 +102,7 @@ All the ROS nodes and useful scripts can be found in "shared/ros_packages/px4_ro
 to work on them.
 
 In order to use the changes during training, one should remember to build the "px4_ros_extended" package every time one 
-of the nodes' scripts are modified.
+of the nodes' scripts is modified.
 
 ```
 cd /src/shared/ros_packages
@@ -110,7 +110,7 @@ colcon build --packages-select px4_ros_extended
 ```
 
 ### Speed-up & Useful PX4 Parameters <a name="speed"></a>
-In order to speed-up the simulation one can start it with these commands, they are already used in the bash script and 
+In order to speed-up the simulation one can start it with these commands, they are already used in the bash scripts and 
 in gazebo_runner.py:
 ```
 PX4_SIM_SPEED_FACTOR=5 HEADLESS=1 make px4_sitl_rtps gazebo

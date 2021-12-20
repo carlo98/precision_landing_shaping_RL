@@ -35,7 +35,7 @@ class Critic_small(nn.Module):
         return x
 
 
-class Actor_small(nn.Module):
+class Actor_small_sep_head(nn.Module):
 
     def __init__(self, state_dim, action_dim):
         """
@@ -43,7 +43,48 @@ class Actor_small(nn.Module):
         :param action_dim: Dimension of output action (int)
         :return:
         """
-        super(Actor_small, self).__init__()
+        super(Actor_small_sep_head, self).__init__()
+
+        self.state_dim = state_dim
+        self.action_dim = action_dim
+
+        self.fc1 = nn.Linear(state_dim, 64)
+        self.fc2 = nn.Linear(64, 32)
+        self.fc3 = nn.Linear(32, 16)
+        if self.action_dim == 3:
+            self.vx_vy = nn.Linear(16, action_dim-1)
+            self.vz = nn.Linear(16, 1)
+        elif self.action_dim == 2:
+            self.vx_vy = nn.Linear(16, action_dim)
+        
+    def forward(self, state):
+        """
+        returns policy function Pi(s) obtained from actor network
+        from -1 to 1.
+        The sampled action can , then later be rescaled
+        :param state: Input state (Torch Variable : [n,state_dim] )
+        :return: Output action (Torch Variable: [n,action_dim] )
+        """
+        x = torch.relu(self.fc1(state))
+        x = torch.relu(self.fc2(x))
+        x = torch.relu(self.fc3(x))
+        action_vx_vy = torch.tanh(self.vx_vy(x))
+        action = action_vx_vy
+        if self.action_dim == 3:
+            action_vz = torch.sigmoid(self.vz(x))
+            action = torch.cat((action_vx_vy, action_vz), dim=1)
+        return action
+
+
+class Actor_small_one_head(nn.Module):
+
+    def __init__(self, state_dim, action_dim):
+        """
+        :param state_dim: Dimension of input state (int)
+        :param action_dim: Dimension of output action (int)
+        :return:
+        """
+        super(Actor_small_one_head, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_dim

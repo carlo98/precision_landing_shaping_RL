@@ -6,7 +6,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 import DDPG.utils as utils
-from DDPG.models import Critic_paper, Actor_paper, Critic_small, Actor_small
+from DDPG.models import Critic_paper, Critic_small
+from DDPG.models import Actor_paper, Actor_small_sep_head, Actor_small_one_head
 
 
 class DDPG:
@@ -28,7 +29,10 @@ class DDPG:
             actor = Actor_paper
             critic = Critic_paper
         elif model == "small":
-            actor = Actor_small
+            actor = Actor_small_sep_head
+            critic = Critic_small
+        elif model == "small_one_head":
+            actor = Actor_small_one_head
             critic = Critic_small
 
         self.actor = actor(self.state_dim, self.action_dim).float()
@@ -57,7 +61,7 @@ class DDPG:
         :param state: state (Numpy array)
         :return: sampled action (Numpy array)
         """
-        state = Variable(torch.from_numpy(state).float())
+        state = Variable(torch.from_numpy(state.reshape(-1, self.state_dim)).float())
         action = self.target_actor.forward(state).detach()
         return action.data.numpy()
 
@@ -68,7 +72,7 @@ class DDPG:
         :param n_steps: number of training steps, used to decrease exploration
         :return: sampled action (Numpy array)
         """
-        state = Variable(torch.from_numpy(state).float())
+        state = Variable(torch.from_numpy(state.reshape(-1, self.state_dim)).float())
         action = self.actor.forward(state).detach()
         new_action = action.data.numpy() + self.noise.sample(n_steps)
         return np.clip(new_action, -1.0, 1.0)

@@ -65,10 +65,10 @@ class AgentNode:
                 if evaluating:  # Evaluate model
                     inputs = np.random.normal(loc=inputs, scale=self.eval_noise)  # During evaluation adding noise to the state
                     normalized_input = self.normalize_input(np.copy(inputs))
-                    action = self.ddpg.get_exploitation_action(normalized_input)
+                    action = self.ddpg.get_exploitation_action(normalized_input)[0]
                 else:
                     normalized_input = self.normalize_input(np.copy(inputs))
-                    action = self.ddpg.get_exploration_action(normalized_input, cont_steps)
+                    action = self.ddpg.get_exploration_action(normalized_input, cont_steps)[0]
             
             inputs, reward, done = self.env.act(action, self.normalize_input)
 
