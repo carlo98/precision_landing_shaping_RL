@@ -63,7 +63,6 @@ class AgentNode:
             log_velocities['vz'] = []
             log_velocities_ref['vz'] = []
         cont_steps = 0
-        episode_tot_reward = 0
         while self.env.reset:  # Waiting for env to stop resetting
             pass
 
@@ -86,11 +85,10 @@ class AgentNode:
                 log_velocities['vz'].append(inputs[5]*self.info_dict['max_vel_z'])
                 log_velocities_ref['vz'].append(action[2]*self.info_dict['max_vel_z'])
 
-            inputs, reward, done = self.env.act(action, self.normalize_input)
+            inputs, _, done = self.env.act(action, self.normalize_input)
             log_positions['x'].append(inputs[0])
             log_positions['y'].append(inputs[1])
             log_positions['z'].append(inputs[2])
-            episode_tot_reward += reward
 
             if (cont_steps % self.info_dict['num-steps'] == 0 and cont_steps > 0) or done:
                 if done:
@@ -100,8 +98,7 @@ class AgentNode:
                 print("Position x: " + str(-inputs[0]) + " y: " + str(-inputs[1]) + " z: " + str(-inputs[2]))
 
                 self.env.reset_env()
-                    
-                episode_tot_reward = 0.0
+
                 self.log(log_positions, log_velocities, log_velocities_ref, time.time()-start_time)
 
                 inputs = self.env.play_env()  # Restart landing listening, after training

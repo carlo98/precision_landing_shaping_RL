@@ -35,7 +35,7 @@ class Critic_small(nn.Module):
         return x
 
 
-class Actor_small(nn.Module):
+class Actor_small_sep_head(nn.Module):
 
     def __init__(self, state_dim, action_dim):
         """
@@ -43,7 +43,7 @@ class Actor_small(nn.Module):
         :param action_dim: Dimension of output action (int)
         :return:
         """
-        super(Actor_small, self).__init__()
+        super(Actor_small_sep_head, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_dim
@@ -76,7 +76,7 @@ class Actor_small(nn.Module):
         return action
 
 
-class Actor_small1(nn.Module):
+class Actor_small_one_head(nn.Module):
 
     def __init__(self, state_dim, action_dim):
         """
@@ -84,7 +84,7 @@ class Actor_small1(nn.Module):
         :param action_dim: Dimension of output action (int)
         :return:
         """
-        super(Actor_small, self).__init__()
+        super(Actor_small_one_head, self).__init__()
 
         self.state_dim = state_dim
         self.action_dim = action_dim

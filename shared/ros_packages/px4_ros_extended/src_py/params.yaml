@@ -17,7 +17,7 @@ test_window_reward: 3
 evaluate_freq: 500
 evaluate_ep: 9  # Keep this a multiple of test_window_reward
 eval_noise: 0.2  # std for gaussian evaluation noise
-model: "paper"  # "paper" or "small"
+model: "small"  # "paper" or "small" or "small_one_head"
 eps_pos_xy: 0.3  # Target dimension
 
 # DDPG

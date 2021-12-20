@@ -6,7 +6,8 @@ import torch.nn.functional as F
 from torch.autograd import Variable
 
 import DDPG.utils as utils
-from DDPG.models import Critic_paper, Actor_paper, Critic_small, Actor_small
+from DDPG.models import Critic_paper, Critic_small
+from DDPG.models import Actor_paper, Actor_small_sep_head, Actor_small_one_head
 
 
 class DDPG:
@@ -28,7 +29,10 @@ class DDPG:
             actor = Actor_paper
             critic = Critic_paper
         elif model == "small":
-            actor = Actor_small
+            actor = Actor_small_sep_head
+            critic = Critic_small
+        elif model == "small_one_head":
+            actor = Actor_small_one_head
             critic = Critic_small
 
         self.actor = actor(self.state_dim, self.action_dim).float()
