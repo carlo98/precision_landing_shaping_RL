@@ -61,6 +61,8 @@ class Reward:
             # Reward for position in z-axes should avoid hovering at z=0 if terrain is lower
             if norm_obs[2] > 0.0:
                 shaping += self.coeffs[6] * np.sqrt(norm_obs[2] ** 2)  # pos z
+            else:
+                shaping -= self.coeffs[6] * np.sqrt(norm_obs[2] ** 2)  # pos z, ground not at z=0, rewarding descent
 
         reward = shaping - self.previous_shaping
         self.previous_shaping = shaping
