@@ -5,8 +5,9 @@ num_env_episodes: 6009  # Keep it a multiple of evaluate_freq and add evaluate_e
 train_freq: 1  # In episodes
 num-steps: 350
 seed: 5
-max_memory_len: 17500  # 50 episodes
-mem_to_use: 4096  # Try to keep this a multiple of the batch size
+max_memory_len: 35000  # 100 episodes
+mem_to_use: 8192  # Try to keep this a multiple of the batch size
+min_mem: 1024  # Minimal memory to use
 log_interval_episodes: 100
 max_height: 3.5
 max_side: 5.0
