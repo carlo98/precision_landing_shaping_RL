@@ -1,5 +1,5 @@
-# Precision landing with physics-informed reinforcement learning
-Physics-informed deep reinforcement learning for drone precision landing, docker container for simulation in Gazebo-ROS2 
+# Precision landing with reinforcement learning
+Deep reinforcement learning for drone precision landing, docker container for simulation in Gazebo-ROS2 
 dashing with PX4-Autopilot controller. 
 
 Project developed, starting from a problem of [DRAFT PoliTO](https://www.draftpolito.it/), as part of the course 
