@@ -20,9 +20,14 @@ Install [Docker](https://docs.docker.com/engine/install/).
 Modify the absolute paths in "run_docker.sh" to reflect the position of the repository on your computer.
 
 Build and start the docker, it will take same time, from the root of the repository run:
-```
-sudo ./run_docker.sh build
-```
+- For ROS2 Dashing:
+   ```
+   sudo ./run_docker.sh build
+   ```
+- For ROS2 Foxy:
+   ```
+   sudo ./run_docker.sh build_foxy
+   ```
 
 Don't worry if this message appears "bash: /src/shared/ros_packages/install/setup.bash: No such file or directory", 
 you just need to follow the rest of the setup and the following times it won't happen again.
@@ -35,9 +40,14 @@ colcon build --packages-select px4_msgs custom_msgs px4_ros_com px4_ros_extended
 
 ## Usage <a name="usage"></a>
 To start the docker run:
-```
-sudo ./run_docker.sh run
-```
+- For ROS2 Dashing:
+   ```
+   sudo ./run_docker.sh run
+   ```
+- For ROS2 Foxy:
+   ```
+   sudo ./run_docker.sh run_foxy
+   ```
 
 ### Train <a name="train"></a>
 Open 2 terminals and run the docker in each one of them, as explained above.
