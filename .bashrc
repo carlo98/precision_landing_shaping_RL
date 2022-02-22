@@ -115,6 +115,11 @@ if ! shopt -oq posix; then
     . /etc/bash_completion
   fi
 fi
-source /opt/ros/dashing/setup.bash
+
+if [ -f /opt/ros/dashing/setup.bash ]; then
+    source /opt/ros/dashing/setup.bash
+elif [ -f /opt/ros/foxy/setup.bash ]; then
+    source /opt/ros/foxy/setup.bash
+fi
 source /src/shared/ros_packages/install/setup.bash
 

@@ -36,3 +36,4 @@ elif [ $1 = 'run_foxy' ]
 then
     docker start RL_foxy
     docker exec -it RL_foxy bash
+fi
