@@ -35,7 +35,7 @@ you just need to follow the rest of the setup and the following times it won't h
 Once it has finished, in the docker run the following commands, in order to build the packages:
 ```
 cd /src/shared/ros_packages
-colcon build --packages-select px4_msgs custom_msgs px4_ros_com px4_ros_extended
+colcon build
 ```
 
 ## Usage <a name="usage"></a>

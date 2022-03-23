@@ -96,3 +96,4 @@ if __name__ == '__main__':
     m_node = rclpy.create_node('gazebo_runner_node')
     gsNode = GazeboRunnerNode(m_node, args.train, args.headless)
     rclpy.spin(m_node)
+

@@ -157,3 +157,4 @@ if __name__ == '__main__':
     rclpy.shutdown()  # Closing Env Wrapper Node
     x.join()
     micrortps_agent.kill()  # Closing micrortps agent
+

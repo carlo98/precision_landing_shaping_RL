@@ -5,7 +5,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "custom_msgs/msg/float32_multi_array.hpp"
+#include "std_msgs/msg/float32_multi_array.hpp"
 #include <px4_msgs/msg/timesync.hpp>
 
 
@@ -13,7 +13,7 @@ using namespace std;
 using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace px4_msgs::msg;
-using namespace custom_msgs::msg;
+using namespace std_msgs::msg;
 using std::placeholders::_1;
 
 
@@ -103,3 +103,4 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+

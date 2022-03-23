@@ -20,7 +20,6 @@ find_package(ament_cmake REQUIRED)
 find_package(ament_cmake_python REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(px4_msgs REQUIRED)
-find_package(custom_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(gazebo_msgs REQUIRED)
 find_package(rclpy REQUIRED)
@@ -28,16 +27,13 @@ find_package(rclpy REQUIRED)
 get_filename_component(PX4_MSGS_DIR "../" ABSOLUTE BASE_DIR ${px4_msgs_DIR})
 set(MSGS_DIR "${PX4_MSGS_DIR}/msg" CACHE INTERNAL "MSGS_DIR")
 
-get_filename_component(CUSTOM_MSGS_DIR "../" ABSOLUTE BASE_DIR ${custom_msgs_DIR})
-set(CUSTOM_MSGS_DIR "${CUSTOM_MSGS_DIR}/msg" CACHE INTERNAL "CUSTOM_MSGS_DIR")
-
 # environment
 add_executable(env src_cpp/env.cpp)
-ament_target_dependencies(env rclcpp px4_msgs custom_msgs std_msgs)
+ament_target_dependencies(env rclcpp px4_msgs std_msgs)
 
 # baseline prec landing
 add_executable(baseline_prec_land src_cpp/baseline_prec_land.cpp)
-ament_target_dependencies(baseline_prec_land custom_msgs rclcpp px4_msgs)
+ament_target_dependencies(baseline_prec_land std_msgs rclcpp px4_msgs)
 
 ament_python_install_package(src_py)
 

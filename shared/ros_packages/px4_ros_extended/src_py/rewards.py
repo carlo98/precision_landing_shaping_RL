@@ -69,3 +69,4 @@ class Reward:
         reward = shaping - self.previous_shaping
         self.previous_shaping = shaping
         return reward, done
+

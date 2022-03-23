@@ -4,13 +4,11 @@ from rewards import Reward
 
 # ROS dep
 from std_msgs.msg import Int64
+from std_msgs.msg import Float32MultiArray
 import rclpy
 
 # Gazebo
 from gazebo_msgs.msg import ContactsState
-
-# Custom msgs
-from custom_msgs.msg import Float32MultiArray
 
 
 class EnvWrapperNode:
@@ -119,3 +117,4 @@ class EnvWrapperNode:
         msg = Int64()
         msg.data = 1
         self.gazebo_down_publisher.publish(msg)
+

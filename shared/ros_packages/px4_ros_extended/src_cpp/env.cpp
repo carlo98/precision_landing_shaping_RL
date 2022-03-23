@@ -5,10 +5,9 @@
 #include <math.h>
 #include <ctime>
 
-#include "custom_msgs/msg/float32_multi_array.hpp"
-
 #include <rclcpp/rclcpp.hpp>
 #include <std_msgs/msg/int64.hpp>
+#include "std_msgs/msg/float32_multi_array.hpp"
 
 #include <px4_msgs/msg/timesync.hpp>
 #include <px4_msgs/msg/trajectory_setpoint.hpp>
@@ -24,7 +23,6 @@ using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace std_msgs::msg;
 using namespace px4_msgs::msg;
-using namespace custom_msgs::msg;
 using std::placeholders::_1;
 
 
@@ -335,3 +333,4 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+
