@@ -12,7 +12,8 @@ Project developed, starting from a problem of [DRAFT PoliTO](https://www.draftpo
    2. [Test](#test)
    3. [Code changes](#changes)
    4. [Speed-up](#speed)
-3. [Acknowledgments](#references)
+3. [Acknowledgments](#acknowledgments)
+4. [References](#references)
 
 ## Setup <a name="setup"></a>
 Install [Docker](https://docs.docker.com/engine/install/).
@@ -134,8 +135,20 @@ In order to avoid following the drone, used in "gazebo_runner.py --test"
 PX4_NO_FOLLOW_MODE=1 make px4_sitl_rtps gazebo
 ```
 
-## Acknowledgments <a name="references"></a>
+## Acknowledgments <a name="acknowledgments"></a>
 The author(s) would like to acknowledge the contribution of the student team DRAFT PoliTO of the Politecnico di Torino, for supporting the research activity by providing technical advising and experimental equipment that helped the work with the simulator.
 
 The initial code for the DDPG algorithm has been taken from [this](https://github.com/vy007vikas/PyTorch-ActorCriticRL) 
 github repository.
+
+## References <a name="references"></a>
+@article{
+   author = {Alejandro Rodriguez-Ramos and Carlos Sampedro and Hriday Bavle and Paloma de la Puente and Pascual Campoy},
+   doi = {10.1007/s10846-018-0891-8},
+   issn = {15730409},
+   issue = {1-2},
+   journal = {Journal of Intelligent and Robotic Systems: Theory and Applications},
+   title = {A Deep Reinforcement Learning Strategy for UAV Autonomous Landing on a Moving Platform},
+   volume = {93},
+   year = {2019},
+}
