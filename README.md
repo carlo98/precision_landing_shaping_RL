@@ -142,6 +142,7 @@ The initial code for the DDPG algorithm has been taken from [this](https://githu
 github repository.
 
 ## References <a name="references"></a>
+```
 @article{
    author = {Alejandro Rodriguez-Ramos and Carlos Sampedro and Hriday Bavle and Paloma de la Puente and Pascual Campoy},
    doi = {10.1007/s10846-018-0891-8},
@@ -152,3 +153,4 @@ github repository.
    volume = {93},
    year = {2019},
 }
+```
