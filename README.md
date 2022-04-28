@@ -37,6 +37,7 @@ Once it has finished, in the docker run the following commands, in order to buil
 ```
 cd /src/shared/ros_packages
 colcon build
+source install/setup.bash
 ```
 
 ## Usage <a name="usage"></a>
