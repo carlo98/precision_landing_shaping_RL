@@ -29,11 +29,11 @@ set(MSGS_DIR "${PX4_MSGS_DIR}/msg" CACHE INTERNAL "MSGS_DIR")
 
 # environment
 add_executable(env src_cpp/env.cpp)
-ament_target_dependencies(env rclcpp px4_msgs std_msgs)
+ament_target_dependencies(env rclcpp px4_msgs std_msgs gazebo_msgs)
 
 # baseline prec landing
 add_executable(baseline_prec_land src_cpp/baseline_prec_land.cpp)
-ament_target_dependencies(baseline_prec_land std_msgs rclcpp px4_msgs)
+ament_target_dependencies(baseline_prec_land std_msgs rclcpp px4_msgs gazebo_msgs)
 
 ament_python_install_package(src_py)
 
