@@ -31,7 +31,8 @@ class GazeboRunnerNode:
         self.started = False
         self.msg_reset_gazebo = Int64()
         self.start_gazebo()
-        self.start_time_no_connection = time.time()  # Used to catch stalled trainig due to "connection closed by client"
+        # Used to catch stalled trainig due to "connection closed by client"
+        self.start_time_no_connection = time.time()
 
     def vehicle_odometry_callback(self, obs):
         self.state = [obs.x, obs.y, obs.z, obs.vx, obs.vy, obs.vz]
@@ -52,11 +53,15 @@ class GazeboRunnerNode:
         self.started = False
 
         if self.train:
-            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo", "PX4_SIM_SPEED_FACTOR=6", "HEADLESS=1"], cwd="/src/PX4-Autopilot")
+            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo_iris_irlock", "PX4_SIM_SPEED_FACTOR=6",
+                                            "HEADLESS=1"],
+                                           cwd="/src/PX4-Autopilot")
         elif not self.train and not self.headless:
-            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo", "PX4_NO_FOLLOW_MODE=1"], cwd="/src/PX4-Autopilot")
+            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo_iris_irlock", "PX4_NO_FOLLOW_MODE=1"],
+                                           cwd="/src/PX4-Autopilot")
         elif not self.train and self.headless:
-            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo", "HEADLESS=1"], cwd="/src/PX4-Autopilot")
+            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo_iris_irlock", "HEADLESS=1"],
+                                           cwd="/src/PX4-Autopilot")
         time.sleep(5)
         self.cont_takeoff_failing = 0
         self.msg_reset_gazebo.data = 0  # Signaling to env that gazebo is ready
@@ -96,4 +101,3 @@ if __name__ == '__main__':
     m_node = rclpy.create_node('gazebo_runner_node')
     gsNode = GazeboRunnerNode(m_node, args.train, args.headless)
     rclpy.spin(m_node)
-

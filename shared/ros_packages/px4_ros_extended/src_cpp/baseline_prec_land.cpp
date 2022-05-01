@@ -9,6 +9,8 @@
 #include <px4_msgs/msg/timesync.hpp>
 
 #include "gazebo_msgs/msg/contacts_state.hpp"
+#include <gazebo_msgs/srv/get_entity_state.hpp>
+#include <gazebo_msgs/srv/set_entity_state.hpp>
 
 
 using namespace std;
@@ -30,6 +32,12 @@ class BaselinePrecLandNode : public rclcpp::Node {
             play_reset_publisher = this->create_publisher<Float32MultiArray>("/env/play_reset/in", 1);
             play_reset_subscriber = this->create_subscription<Float32MultiArray>("/env/play_reset/out", 1, std::bind(&BaselinePrecLandNode::play_reset_callback, this, _1));
             vehicle_odometry_subscriber = this->create_subscription<Float32MultiArray>("/agent/odom", 1, std::bind(&BaselinePrecLandNode::vehicle_odometry_callback, this, _1));
+            
+            get_state_client_ = this->create_client<gazebo_msgs::srv::GetEntityState>("/gazebo/get_entity_state");
+			get_state_client_->wait_for_service(std::chrono::seconds(1));
+
+			set_state_client_ = this->create_client<gazebo_msgs::srv::SetEntityState>("/gazebo/set_entity_state");
+			set_state_client_->wait_for_service(std::chrono::seconds(1));
 
             timesync_sub_ = this->create_subscription<Timesync>(
                 "fmu/timesync/out", 2,
@@ -47,12 +55,30 @@ class BaselinePrecLandNode : public rclcpp::Node {
 				        this->float32Vector.clear();
 				        this->float32Vector.push_back(0.8 * (this->x_drone - this->x_pos));
 				        this->float32Vector.push_back(0.8 * (this->y_drone - this->y_pos));
-				        this->float32Vector.push_back(-0.5);
+				        this->float32Vector.push_back(-0.3);
 
 				        this->float32Msg.data = this->float32Vector;
 				        cout << "Pos (x="<<(this->x_drone - this->x_pos)<<", y="<<(this->y_drone - this->y_pos)<<", z="<<this->z_drone<<")"<< endl;
-				        cout << "Vel (x="<<0.8 * (this->x_drone - this->x_pos)<<", y="<<0.8 * (this->y_drone - this->y_pos)<<", z="<<-0.5<<")"<< endl;
+				        cout << "Vel (x="<<0.8 * (this->x_drone - this->x_pos)<<", y="<<0.8 * (this->y_drone - this->y_pos)<<", z="<<-0.3<<")"<< endl;
 				        this->pub_agent_vec->publish(this->float32Msg);
+				        // Get initial state
+						this->GetState("irlock_beacon");
+
+						// Set new state
+						geometry_msgs::msg::Point p = geometry_msgs::msg::Point();
+						geometry_msgs::msg::Quaternion q = geometry_msgs::msg::Quaternion();
+						geometry_msgs::msg::Pose pose = geometry_msgs::msg::Pose();
+						geometry_msgs::msg::Vector3 lin_vel = geometry_msgs::msg::Vector3();
+						geometry_msgs::msg::Vector3 ang_vel = geometry_msgs::msg::Vector3();
+						p.x = 20.0; p.y = 50.0; p.z = 0.0;
+						q.x=0; q.y=0; q.z=0; q.w=0;
+						pose.position = p; pose.orientation = q;
+						lin_vel.x = 0.0; lin_vel.y = 0.0; lin_vel.z = 0.0;
+						ang_vel.x = 0.0; ang_vel.y = 0.0; ang_vel.z = 0.0;
+						this->SetState("irlock_beacon", pose, lin_vel, ang_vel);
+
+						// Check new state
+						this->GetState("irlock_beacon");
 		            } else {
 		                cout << "Episode ended, you can exit from all the terminals, thank you for having played with us." << endl;
 		                this->stopped = true;
@@ -70,10 +96,16 @@ class BaselinePrecLandNode : public rclcpp::Node {
         rclcpp::Publisher<Float32MultiArray>::SharedPtr play_reset_publisher;
         rclcpp::Subscription<Float32MultiArray>::SharedPtr play_reset_subscriber;
         rclcpp::Subscription<ContactsState>::SharedPtr bumper_subscriber;
+        std::shared_ptr<rclcpp::Client<gazebo_msgs::srv::GetEntityState>> get_state_client_;
+  		std::shared_ptr<rclcpp::Client<gazebo_msgs::srv::SetEntityState>> set_state_client_;
 
         void vehicle_odometry_callback(const Float32MultiArray::SharedPtr msg);
         void play_reset_callback(const Float32MultiArray::SharedPtr msg_float);
         void check_landed_callback(const ContactsState::SharedPtr msg_float);
+        void GetState(const std::string & _entity);
+        			  
+        void SetState(const std::string & _entity, const geometry_msgs::msg::Pose & _pose, 
+        			  const geometry_msgs::msg::Vector3 & _lin_vel, const geometry_msgs::msg::Vector3 & _ang_vel);
 
         std::atomic<uint64_t> timestamp_;
         
@@ -89,6 +121,8 @@ class BaselinePrecLandNode : public rclcpp::Node {
         bool landed_received = false;
         Float32MultiArray float32Msg = Float32MultiArray();
         std::vector<float> float32Vector = std::vector<float>(3);
+        geometry_msgs::msg::Pose new_ir_beacon_pose;
+        geometry_msgs::msg::Twist new_ir_beacon_twist;
 };
 
 void BaselinePrecLandNode::vehicle_odometry_callback(const Float32MultiArray::SharedPtr msg)
@@ -118,6 +152,40 @@ void BaselinePrecLandNode::check_landed_callback(const ContactsState::SharedPtr 
     this->landed_received = true;
 }
 
+/// Helper function to call get state service
+void BaselinePrecLandNode::GetState(const std::string & _entity) {
+  auto request = std::make_shared<gazebo_msgs::srv::GetEntityState::Request>();
+  request->name = _entity;
+
+  auto response_received_callback = [this](rclcpp::Client<gazebo_msgs::srv::GetEntityState>::SharedFuture future) {
+  	this->new_ir_beacon_pose = future.get()->state.pose;
+  	this->new_ir_beacon_twist = future.get()->state.twist;
+  };
+  auto response_future = get_state_client_->async_send_request(request, response_received_callback);
+
+  cout<<"Pose: ("<<"x="<<this->new_ir_beacon_pose.position.x<<", y="<<this->new_ir_beacon_pose.position.y<<", z="<<this->new_ir_beacon_pose.position.z<<")"<<endl;
+  cout<<"Velocity: ("<<"x="<<this->new_ir_beacon_twist.linear.x<<", y="<<this->new_ir_beacon_twist.linear.y<<", z="<<this->new_ir_beacon_twist.linear.z<<")"<<endl;
+}
+
+
+/// Helper function to call set state service
+void BaselinePrecLandNode::SetState(const std::string & _entity, 
+									const geometry_msgs::msg::Pose & _pose, 
+									const geometry_msgs::msg::Vector3 & _lin_vel, 
+									const geometry_msgs::msg::Vector3 & _ang_vel) {
+  auto request = std::make_shared<gazebo_msgs::srv::SetEntityState::Request>();
+  request->state.name = _entity;
+  request->state.pose.position = _pose.position;
+  request->state.pose.orientation = _pose.orientation;
+  request->state.twist.linear = _lin_vel;
+  request->state.twist.angular = _ang_vel;
+  
+  auto response_received_callback = [this](rclcpp::Client<gazebo_msgs::srv::SetEntityState>::SharedFuture future) {
+  	cout<<"Response to set new state: "<<future.get()<<endl;
+  };
+
+  auto response_future = set_state_client_->async_send_request(request, response_received_callback);
+}
 
 int main(int argc, char* argv[])
 {
