@@ -61,19 +61,20 @@ class EnvNode : public rclcpp::Node {
                 
             // Target time callback
             auto target_timer_callback = [this]() -> void {
-                // Get initial state
+                // Get state
                 this->GetState("irlock_beacon");
-                if (this->success_set_new_state && this->success_get_new_state) {
+                // If listening to actions and target state available
+                if (this->success_set_new_state && this->success_get_new_state && this->play==1 && this->reset==0 && this->micrortps_connected) {
                 	this->success_set_new_state = false;
 					// Set new state
 					geometry_msgs::msg::Point p = geometry_msgs::msg::Point();
 					geometry_msgs::msg::Pose pose = geometry_msgs::msg::Pose();
 					geometry_msgs::msg::Vector3 lin_vel = geometry_msgs::msg::Vector3();
 					geometry_msgs::msg::Vector3 ang_vel = geometry_msgs::msg::Vector3();
-					p.x = this->new_ir_beacon_pose.position.x+0.01; p.y = this->new_ir_beacon_pose.position.y; p.z = this->new_ir_beacon_pose.position.z;
-					pose.position = p; pose.orientation = this->new_ir_beacon_pose.orientation;
-					lin_vel = this->new_ir_beacon_twist.linear;
-					ang_vel = this->new_ir_beacon_twist.angular;
+					p.x = this->ir_beacon_pose.position.x+0.005; p.y = this->ir_beacon_pose.position.y; p.z = this->ir_beacon_pose.position.z;
+					pose.position = p; pose.orientation = this->ir_beacon_pose.orientation;
+					lin_vel = this->ir_beacon_twist.linear;
+					ang_vel = this->ir_beacon_twist.angular;
 					this->SetState("irlock_beacon", pose, lin_vel, ang_vel);
 				}
             };
@@ -149,8 +150,8 @@ class EnvNode : public rclcpp::Node {
         float w_z = min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_z-min_z)));
         bool micrortps_connected = false;  // Whether micrortps_agent and gazebo are ready or not
         bool armed_flag = false;  // Drone armed
-        geometry_msgs::msg::Pose new_ir_beacon_pose;
-        geometry_msgs::msg::Twist new_ir_beacon_twist;
+        geometry_msgs::msg::Pose ir_beacon_pose;
+        geometry_msgs::msg::Twist ir_beacon_twist;
         bool success_set_new_state = true;
         bool success_get_new_state = false;
 
@@ -365,11 +366,8 @@ void EnvNode::GetState(const std::string & _entity) {
   request->name = _entity;
 
   auto response_received_callback = [this](rclcpp::Client<gazebo_msgs::srv::GetEntityState>::SharedFuture future) {
-  	this->new_ir_beacon_pose = future.get()->state.pose;
-  	this->new_ir_beacon_twist = future.get()->state.twist;
-  	cout<<future.get()->success<<endl;
-  	cout<<"Pose: ("<<"x="<<this->new_ir_beacon_pose.position.x<<", y="<<this->new_ir_beacon_pose.position.y<<", z="<<this->new_ir_beacon_pose.position.z<<")"<<endl;
-  	cout<<"Velocity: ("<<"x="<<this->new_ir_beacon_twist.linear.x<<", y="<<this->new_ir_beacon_twist.linear.y<<", z="<<this->new_ir_beacon_twist.linear.z<<")"<<endl;
+  	this->ir_beacon_pose = future.get()->state.pose;
+  	this->ir_beacon_twist = future.get()->state.twist;
   	this->success_get_new_state = future.get()->success;
   };
   auto response_future = get_state_client_->async_send_request(request, response_received_callback);
