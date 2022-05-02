@@ -35,6 +35,7 @@ class BaselinePrecLandNode : public rclcpp::Node {
             
             get_state_client_ = this->create_client<gazebo_msgs::srv::GetEntityState>("/gazebo/get_entity_state");
 			get_state_client_->wait_for_service(std::chrono::seconds(1));
+			
 
 			set_state_client_ = this->create_client<gazebo_msgs::srv::SetEntityState>("/gazebo/set_entity_state");
 			set_state_client_->wait_for_service(std::chrono::seconds(1));
@@ -48,6 +49,8 @@ class BaselinePrecLandNode : public rclcpp::Node {
 
             // Main loop
             auto timer_callback = [this]() -> void {
+                // Get initial state
+                this->GetState("irlock_beacon");
                 if(this->reset == 0 and !this->stopped) {  // Playing, if 1 takeoff
 		            landed_received = false;
 		            
@@ -61,24 +64,20 @@ class BaselinePrecLandNode : public rclcpp::Node {
 				        cout << "Pos (x="<<(this->x_drone - this->x_pos)<<", y="<<(this->y_drone - this->y_pos)<<", z="<<this->z_drone<<")"<< endl;
 				        cout << "Vel (x="<<0.8 * (this->x_drone - this->x_pos)<<", y="<<0.8 * (this->y_drone - this->y_pos)<<", z="<<-0.3<<")"<< endl;
 				        this->pub_agent_vec->publish(this->float32Msg);
-				        // Get initial state
-						this->GetState("irlock_beacon");
-
-						// Set new state
-						geometry_msgs::msg::Point p = geometry_msgs::msg::Point();
-						geometry_msgs::msg::Quaternion q = geometry_msgs::msg::Quaternion();
-						geometry_msgs::msg::Pose pose = geometry_msgs::msg::Pose();
-						geometry_msgs::msg::Vector3 lin_vel = geometry_msgs::msg::Vector3();
-						geometry_msgs::msg::Vector3 ang_vel = geometry_msgs::msg::Vector3();
-						p.x = 20.0; p.y = 50.0; p.z = 0.0;
-						q.x=0; q.y=0; q.z=0; q.w=0;
-						pose.position = p; pose.orientation = q;
-						lin_vel.x = 0.0; lin_vel.y = 0.0; lin_vel.z = 0.0;
-						ang_vel.x = 0.0; ang_vel.y = 0.0; ang_vel.z = 0.0;
-						this->SetState("irlock_beacon", pose, lin_vel, ang_vel);
-
-						// Check new state
-						this->GetState("irlock_beacon");
+				        
+				        if (this->success_set_new_state && this->success_get_new_state) {
+				        	this->success_set_new_state = false;
+							// Set new state
+							geometry_msgs::msg::Point p = geometry_msgs::msg::Point();
+							geometry_msgs::msg::Pose pose = geometry_msgs::msg::Pose();
+							geometry_msgs::msg::Vector3 lin_vel = geometry_msgs::msg::Vector3();
+							geometry_msgs::msg::Vector3 ang_vel = geometry_msgs::msg::Vector3();
+							p.x = this->new_ir_beacon_pose.position.x+0.1; p.y = this->new_ir_beacon_pose.position.y; p.z = this->new_ir_beacon_pose.position.z;
+							pose.position = p; pose.orientation = this->new_ir_beacon_pose.orientation;
+							lin_vel = this->new_ir_beacon_twist.linear;
+							ang_vel = this->new_ir_beacon_twist.angular;
+							this->SetState("irlock_beacon", pose, lin_vel, ang_vel);
+						}
 		            } else {
 		                cout << "Episode ended, you can exit from all the terminals, thank you for having played with us." << endl;
 		                this->stopped = true;
@@ -123,6 +122,8 @@ class BaselinePrecLandNode : public rclcpp::Node {
         std::vector<float> float32Vector = std::vector<float>(3);
         geometry_msgs::msg::Pose new_ir_beacon_pose;
         geometry_msgs::msg::Twist new_ir_beacon_twist;
+        bool success_set_new_state = true;
+        bool success_get_new_state = true;
 };
 
 void BaselinePrecLandNode::vehicle_odometry_callback(const Float32MultiArray::SharedPtr msg)
@@ -160,11 +161,12 @@ void BaselinePrecLandNode::GetState(const std::string & _entity) {
   auto response_received_callback = [this](rclcpp::Client<gazebo_msgs::srv::GetEntityState>::SharedFuture future) {
   	this->new_ir_beacon_pose = future.get()->state.pose;
   	this->new_ir_beacon_twist = future.get()->state.twist;
+  	cout<<future.get()->success<<endl;
+  	cout<<"Pose: ("<<"x="<<this->new_ir_beacon_pose.position.x<<", y="<<this->new_ir_beacon_pose.position.y<<", z="<<this->new_ir_beacon_pose.position.z<<")"<<endl;
+  	cout<<"Velocity: ("<<"x="<<this->new_ir_beacon_twist.linear.x<<", y="<<this->new_ir_beacon_twist.linear.y<<", z="<<this->new_ir_beacon_twist.linear.z<<")"<<endl;
+  	this->success_get_new_state = future.get()->success;
   };
   auto response_future = get_state_client_->async_send_request(request, response_received_callback);
-
-  cout<<"Pose: ("<<"x="<<this->new_ir_beacon_pose.position.x<<", y="<<this->new_ir_beacon_pose.position.y<<", z="<<this->new_ir_beacon_pose.position.z<<")"<<endl;
-  cout<<"Velocity: ("<<"x="<<this->new_ir_beacon_twist.linear.x<<", y="<<this->new_ir_beacon_twist.linear.y<<", z="<<this->new_ir_beacon_twist.linear.z<<")"<<endl;
 }
 
 
@@ -181,7 +183,7 @@ void BaselinePrecLandNode::SetState(const std::string & _entity,
   request->state.twist.angular = _ang_vel;
   
   auto response_received_callback = [this](rclcpp::Client<gazebo_msgs::srv::SetEntityState>::SharedFuture future) {
-  	cout<<"Response to set new state: "<<future.get()<<endl;
+  	this->success_set_new_state = future.get()->success;
   };
 
   auto response_future = set_state_client_->async_send_request(request, response_received_callback);
