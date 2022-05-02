@@ -28,14 +28,15 @@ class EnvWrapperNode:
         self.agent_action_received_subscriber = self.node.create_subscription(Int64, "/agent/action_received",
                                                                               self.action_received_callback, 1)
         self.gazebo_down_publisher = self.node.create_publisher(Int64, "/env/gazebo_down", 1)
-        self.state_world_subscriber = self.node.create_subscription(ModelStates, '/gazebo/ModelStates', self.model_callback, 1)
+        self.state_world_subscriber = self.node.create_subscription(ModelStates, '/gazebo/model_states_gazebo',
+                                                                    self.model_callback, imu_qos)
 
         self.reward = Reward(max_height, max_side)
 
         self.action_received = False
         self.state = np.zeros(state_shape)
         self.state_world = np.zeros(state_shape)
-        self.ir_beacon_position = np.zeros(state_shape)
+        self.ir_beacon_state = np.zeros(state_shape)
         self.landed = False
         self.landed_received = False
         self.reset = True
@@ -53,23 +54,30 @@ class EnvWrapperNode:
     
     def model_callback(self, msg):
         drone_id = 0
-        while msg.name != "iris_irlock":
-            drone_id += 1ex
-        self.state_world[2] = -1.0*msg.result().pose[drone_id].position.z
-        self.state_world[0] = msg.result().pose[drone_id].position.y
-        self.state_world[1] = msg.result().pose[drone_id].position.x
+        if "iris_irlock" in msg.name:
+            while msg.name != "iris_irlock":
+                drone_id += 1
+            self.state_world[2] = -1.0*msg.pose[drone_id].position.z
+            self.state_world[0] = msg.pose[drone_id].position.y
+            self.state_world[1] = msg.pose[drone_id].position.x
+            self.state_world[5] = -1.0*msg.twist[drone_id].linear.z
+            self.state_world[3] = msg.twist[drone_id].linear.y
+            self.state_world[4] = msg.twist[drone_id].linear.x
+            print("Iris: ", self.state_world)
         
         beacon_id = 0
-        while msg.name != "irlock_beacon":
-            beacon_id += 1
-        self.ir_beacon_position[0] = msg.result().pose[beacon_id].position.y
-        self.ir_beacon_position[1] = msg.result().pose[beacon_id].position.x
-        self.ir_beacon_position[2] = -1.0*msg.result().pose[beacon_id].position.z
-        # self.ir_beacon_orientation = msg.result().pose[beacon_id].orientation
-        # self.ir_beacon_twist_linear[0] = msg.result().twist[beacon_id].linear.y
-        # self.ir_beacon_twist_linear[1] = msg.result().twist[beacon_id].linear.x
-        # self.ir_beacon_twist_linear[2] = -1.0*msg.result().twist[beacon_id].linear.z
-        # self.ir_beacon_twist_angular = msg.result().twist[beacon_id].angular
+        if "irlock_beacon" in msg.name:
+            while msg.name != "irlock_beacon":
+                beacon_id += 1
+            self.ir_beacon_state[0] = msg.pose[beacon_id].position.y
+            self.ir_beacon_state[1] = msg.pose[beacon_id].position.x
+            self.ir_beacon_state[2] = -1.0*msg.pose[beacon_id].position.z
+            # self.ir_beacon_orientation = msg.pose[beacon_id].orientation
+            self.ir_beacon_state[3] = msg.twist[beacon_id].linear.y
+            self.ir_beacon_state[4] = msg.twist[beacon_id].linear.x
+            self.ir_beacon_state[5] = -1.0*msg.twist[beacon_id].linear.z
+            # self.ir_beacon_twist_angular = msg.twist[beacon_id].angular
+            print("Beacon: ", self.ir_beacon_state)
 
     def act(self, action, normalize):
     
@@ -81,7 +89,7 @@ class EnvWrapperNode:
                 vel_z = 0.6 if abs_height > 1.0 else 0.9*abs_height
                 if abs_height <= 0.50:
                     vel_z = 0.25
-            elif self.action_shape == 3:  # Predictiong vx, vy and vz
+            elif self.action_shape == 3:  # Predicting vx, vy and vz
                 vel_z = action[2] * self.max_vel_z
             action_msg = Float32MultiArray()
             action_msg.data = [-action[0] * self.max_vel_xy, -action[1] * self.max_vel_xy, -vel_z]  # Fixed z velocity
@@ -93,9 +101,10 @@ class EnvWrapperNode:
             self.state_world = np.zeros(self.state_shape)
             while (self.state_world == 0).all():  # Wait for first message to arrive
                 pass
-                
-        new_state = np.copy(self.state_world)
-        reward, done = self.reward.get_reward(new_state, normalize(np.copy(new_state)), action, self.landed, self.ir_beacon_position, self.eps_pos_xy, self.eps_vel_xy)
+        
+        new_state = np.copy(self.state_world - self.ir_beacon_state)
+        reward, done = self.reward.get_reward(new_state, normalize(np.copy(new_state)), action, self.landed, self.eps_pos_xy, self.eps_vel_xy)
+        print(new_state, " ", reward)
 
         self.action_received = False
         return new_state, reward, done
@@ -141,4 +150,3 @@ class EnvWrapperNode:
         msg = Int64()
         msg.data = 1
         self.gazebo_down_publisher.publish(msg)
-
