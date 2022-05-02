@@ -9,6 +9,7 @@ import rclpy
 
 # Gazebo
 from gazebo_msgs.msg import ContactsState
+from gazebo_msgs.msg import ModelStates
 
 
 class EnvWrapperNode:
@@ -27,11 +28,14 @@ class EnvWrapperNode:
         self.agent_action_received_subscriber = self.node.create_subscription(Int64, "/agent/action_received",
                                                                               self.action_received_callback, 1)
         self.gazebo_down_publisher = self.node.create_publisher(Int64, "/env/gazebo_down", 1)
+        self.state_world_subscriber = self.node.create_subscription(ModelStates, '/gazebo/ModelStates', self.model_callback, 1)
 
         self.reward = Reward(max_height, max_side)
 
         self.action_received = False
         self.state = np.zeros(state_shape)
+        self.state_world = np.zeros(state_shape)
+        self.ir_beacon_position = np.zeros(state_shape)
         self.landed = False
         self.landed_received = False
         self.reset = True
@@ -46,6 +50,26 @@ class EnvWrapperNode:
 
     def vehicle_odometry_callback(self, obs):
         self.state = -np.array(obs.data[:self.state_shape])
+    
+    def model_callback(self, msg):
+        drone_id = 0
+        while msg.name != "iris_irlock":
+            drone_id += 1ex
+        self.state_world[2] = -1.0*msg.result().pose[drone_id].position.z
+        self.state_world[0] = msg.result().pose[drone_id].position.y
+        self.state_world[1] = msg.result().pose[drone_id].position.x
+        
+        beacon_id = 0
+        while msg.name != "irlock_beacon":
+            beacon_id += 1
+        self.ir_beacon_position[0] = msg.result().pose[beacon_id].position.y
+        self.ir_beacon_position[1] = msg.result().pose[beacon_id].position.x
+        self.ir_beacon_position[2] = -1.0*msg.result().pose[beacon_id].position.z
+        # self.ir_beacon_orientation = msg.result().pose[beacon_id].orientation
+        # self.ir_beacon_twist_linear[0] = msg.result().twist[beacon_id].linear.y
+        # self.ir_beacon_twist_linear[1] = msg.result().twist[beacon_id].linear.x
+        # self.ir_beacon_twist_linear[2] = -1.0*msg.result().twist[beacon_id].linear.z
+        # self.ir_beacon_twist_angular = msg.result().twist[beacon_id].angular
 
     def act(self, action, normalize):
     
@@ -53,7 +77,7 @@ class EnvWrapperNode:
 
         if not self.landed:
             if self.action_shape == 2:  # Predicting vx and vy
-                abs_height = np.abs(self.state[2])
+                abs_height = np.abs(self.state_world[2])
                 vel_z = 0.6 if abs_height > 1.0 else 0.9*abs_height
                 if abs_height <= 0.50:
                     vel_z = 0.25
@@ -66,12 +90,12 @@ class EnvWrapperNode:
             while not self.action_received:  # Wait for confirmation from environment
                 pass
 
-            self.state = np.zeros(self.state_shape)
-            while (self.state == 0).all():  # Wait for first message to arrive
+            self.state_world = np.zeros(self.state_shape)
+            while (self.state_world == 0).all():  # Wait for first message to arrive
                 pass
                 
-        new_state = np.copy(self.state)
-        reward, done = self.reward.get_reward(new_state, normalize(np.copy(new_state)), action, self.landed, self.eps_pos_xy, self.eps_vel_xy)
+        new_state = np.copy(self.state_world)
+        reward, done = self.reward.get_reward(new_state, normalize(np.copy(new_state)), action, self.landed, self.ir_beacon_position, self.eps_pos_xy, self.eps_vel_xy)
 
         self.action_received = False
         return new_state, reward, done
@@ -96,15 +120,15 @@ class EnvWrapperNode:
     def play_env(self):  # Used for synchronization with gazebo
         play_reset_msg = Float32MultiArray()
         play_reset_msg.data = [1.0, 0.0]
-        # self.reward.init_shaping(self.state)  # Initialising shaping for reward
+        # self.reward.init_shaping(self.state_world)  # Initialising shaping for reward
         self.play_reset_publisher.publish(play_reset_msg)
         self.play = True
 
-        self.state = np.zeros(self.state_shape)
-        while (self.state == 0).all():  # Wait for first message to arrive
+        self.state_world = np.zeros(self.state_shape)
+        while (self.state_world == 0).all():  # Wait for first message to arrive
             pass
 
-        return np.copy(self.state)
+        return np.copy(self.state_world)
         
     def play_reset_callback(self, msg):  # Used for synchronization with gazebo
         if msg.data[1] == 0:
