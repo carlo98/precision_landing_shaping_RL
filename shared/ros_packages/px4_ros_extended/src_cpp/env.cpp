@@ -16,6 +16,8 @@
 #include <px4_msgs/msg/offboard_control_mode.hpp>
 #include <px4_msgs/msg/vehicle_odometry.hpp>
 #include <px4_msgs/msg/vehicle_status.hpp>
+#include <gazebo_msgs/srv/get_entity_state.hpp>
+#include <gazebo_msgs/srv/set_entity_state.hpp>
 
 
 using namespace std;
@@ -23,6 +25,7 @@ using namespace std::chrono;
 using namespace std::chrono_literals;
 using namespace std_msgs::msg;
 using namespace px4_msgs::msg;
+using namespace gazebo_msgs::msg;
 using std::placeholders::_1;
 
 
@@ -42,6 +45,10 @@ class EnvNode : public rclcpp::Node {
             play_reset_publisher = this->create_publisher<Float32MultiArray>("/env/play_reset/out", 1);
             agent_odom_publisher = this->create_publisher<Float32MultiArray>("/agent/odom", 1);
             resetting_subscriber = this->create_subscription<Int64>("/env/resetting", 1, std::bind(&EnvNode::resetting_callback, this, _1));
+            get_state_client_ = this->create_client<gazebo_msgs::srv::GetEntityState>("/gazebo/get_entity_state");
+			get_state_client_->wait_for_service(std::chrono::seconds(1));
+			set_state_client_ = this->create_client<gazebo_msgs::srv::SetEntityState>("/gazebo/set_entity_state");
+			set_state_client_->wait_for_service(std::chrono::seconds(1));
             
             srand (static_cast <unsigned> (time(0)));
 
@@ -51,6 +58,25 @@ class EnvNode : public rclcpp::Node {
                 {
                     timestamp_.store(msg->timestamp);
                 });
+                
+            // Target time callback
+            auto target_timer_callback = [this]() -> void {
+                // Get initial state
+                this->GetState("irlock_beacon");
+                if (this->success_set_new_state && this->success_get_new_state) {
+                	this->success_set_new_state = false;
+					// Set new state
+					geometry_msgs::msg::Point p = geometry_msgs::msg::Point();
+					geometry_msgs::msg::Pose pose = geometry_msgs::msg::Pose();
+					geometry_msgs::msg::Vector3 lin_vel = geometry_msgs::msg::Vector3();
+					geometry_msgs::msg::Vector3 ang_vel = geometry_msgs::msg::Vector3();
+					p.x = this->new_ir_beacon_pose.position.x+0.01; p.y = this->new_ir_beacon_pose.position.y; p.z = this->new_ir_beacon_pose.position.z;
+					pose.position = p; pose.orientation = this->new_ir_beacon_pose.orientation;
+					lin_vel = this->new_ir_beacon_twist.linear;
+					ang_vel = this->new_ir_beacon_twist.angular;
+					this->SetState("irlock_beacon", pose, lin_vel, ang_vel);
+				}
+            };
 
             auto timer_callback = [this]() -> void {
                 if (this->offboard_setpoint_counter_ == 30 && this->micrortps_connected) {
@@ -76,6 +102,7 @@ class EnvNode : public rclcpp::Node {
                     this->takeoff(this->w_x, this->w_y, this->w_z);
                 }
             };
+            timer_target_ = this->create_wall_timer(20ms, target_timer_callback);  // 50 Hz
             timer_ = this->create_wall_timer(50ms, timer_callback);  // 20Hz
         }
 
@@ -85,6 +112,7 @@ class EnvNode : public rclcpp::Node {
 
     private:
         rclcpp::TimerBase::SharedPtr timer_;
+        rclcpp::TimerBase::SharedPtr timer_target_;
         rclcpp::Publisher<VehicleCommand>::SharedPtr vehicle_command_publisher_;
         rclcpp::Subscription<Timesync>::SharedPtr timesync_sub_;
         rclcpp::Subscription<VehicleOdometry>::SharedPtr odometry_subscriber;
@@ -97,6 +125,8 @@ class EnvNode : public rclcpp::Node {
         rclcpp::Subscription<Float32MultiArray>::SharedPtr play_reset_subscriber;
         rclcpp::Publisher<Float32MultiArray>::SharedPtr agent_odom_publisher;
         rclcpp::Subscription<Int64>::SharedPtr resetting_subscriber;
+        std::shared_ptr<rclcpp::Client<gazebo_msgs::srv::GetEntityState>> get_state_client_;
+  		std::shared_ptr<rclcpp::Client<gazebo_msgs::srv::SetEntityState>> set_state_client_;
 
         std::atomic<uint64_t> timestamp_;
         Int64 int64Msg = Int64();
@@ -119,6 +149,10 @@ class EnvNode : public rclcpp::Node {
         float w_z = min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_z-min_z)));
         bool micrortps_connected = false;  // Whether micrortps_agent and gazebo are ready or not
         bool armed_flag = false;  // Drone armed
+        geometry_msgs::msg::Pose new_ir_beacon_pose;
+        geometry_msgs::msg::Twist new_ir_beacon_twist;
+        bool success_set_new_state = true;
+        bool success_get_new_state = false;
 
         void publish_vehicle_command(uint16_t command, float param1 = 0.0, float param2 = 0.0) const;
         void publish_trajectory_setpoint_vel(float vx, float vy, float vz, float yawspeed) const;
@@ -131,6 +165,9 @@ class EnvNode : public rclcpp::Node {
         void agent_odom_pub();
         void publish_offboard_control_mode(bool pos, bool vel, bool acc, bool att, bool br) const;
         void new_position();
+        void GetState(const std::string & _entity);
+        void SetState(const std::string & _entity, const geometry_msgs::msg::Pose & _pose, 
+        			  const geometry_msgs::msg::Vector3 & _lin_vel, const geometry_msgs::msg::Vector3 & _ang_vel);
 };
 
 void EnvNode::land() const
@@ -322,6 +359,40 @@ void EnvNode::publish_offboard_control_mode(bool pos, bool vel, bool acc, bool a
 	offboard_control_mode_publisher_->publish(msg);
 }
 
+// Helper function to call get state service
+void EnvNode::GetState(const std::string & _entity) {
+  auto request = std::make_shared<gazebo_msgs::srv::GetEntityState::Request>();
+  request->name = _entity;
+
+  auto response_received_callback = [this](rclcpp::Client<gazebo_msgs::srv::GetEntityState>::SharedFuture future) {
+  	this->new_ir_beacon_pose = future.get()->state.pose;
+  	this->new_ir_beacon_twist = future.get()->state.twist;
+  	cout<<future.get()->success<<endl;
+  	cout<<"Pose: ("<<"x="<<this->new_ir_beacon_pose.position.x<<", y="<<this->new_ir_beacon_pose.position.y<<", z="<<this->new_ir_beacon_pose.position.z<<")"<<endl;
+  	cout<<"Velocity: ("<<"x="<<this->new_ir_beacon_twist.linear.x<<", y="<<this->new_ir_beacon_twist.linear.y<<", z="<<this->new_ir_beacon_twist.linear.z<<")"<<endl;
+  	this->success_get_new_state = future.get()->success;
+  };
+  auto response_future = get_state_client_->async_send_request(request, response_received_callback);
+}
+
+// Helper function to call set state service
+void EnvNode::SetState(const std::string & _entity, 
+									const geometry_msgs::msg::Pose & _pose, 
+									const geometry_msgs::msg::Vector3 & _lin_vel, 
+									const geometry_msgs::msg::Vector3 & _ang_vel) {
+  auto request = std::make_shared<gazebo_msgs::srv::SetEntityState::Request>();
+  request->state.name = _entity;
+  request->state.pose.position = _pose.position;
+  request->state.pose.orientation = _pose.orientation;
+  request->state.twist.linear = _lin_vel;
+  request->state.twist.angular = _ang_vel;
+  
+  auto response_received_callback = [this](rclcpp::Client<gazebo_msgs::srv::SetEntityState>::SharedFuture future) {
+  	this->success_set_new_state = future.get()->success;
+  };
+
+  auto response_future = set_state_client_->async_send_request(request, response_received_callback);
+}
 
 int main(int argc, char* argv[])
 {
