@@ -31,7 +31,7 @@ class GazeboRunnerNode:
         self.started = False
         self.msg_reset_gazebo = Int64()
         self.start_gazebo()
-        # Used to catch stalled trainig due to "connection closed by client"
+        # Used to catch stalled training due to "connection closed by client"
         self.start_time_no_connection = time.time()
 
     def vehicle_odometry_callback(self, obs):

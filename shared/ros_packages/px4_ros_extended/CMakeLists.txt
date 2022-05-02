@@ -48,6 +48,7 @@ install(PROGRAMS
     src_py/ddpg_agent.py
     src_py/test_ddpg_agent.py
     src_py/gazebo_runner.py
+    src_py/test_env_wrapper.py
     DESTINATION lib/${PROJECT_NAME}
 )
 

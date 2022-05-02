@@ -53,9 +53,9 @@ class EnvWrapperNode:
         self.state = -np.array(obs.data[:self.state_shape])
     
     def model_callback(self, msg):
-        drone_id = 0
         if "iris_irlock" in msg.name:
-            while msg.name != "iris_irlock":
+            drone_id = 0
+            while msg.name[drone_id] != "iris_irlock":
                 drone_id += 1
             self.state_world[2] = -1.0*msg.pose[drone_id].position.z
             self.state_world[0] = msg.pose[drone_id].position.y
@@ -63,11 +63,10 @@ class EnvWrapperNode:
             self.state_world[5] = -1.0*msg.twist[drone_id].linear.z
             self.state_world[3] = msg.twist[drone_id].linear.y
             self.state_world[4] = msg.twist[drone_id].linear.x
-            print("Iris: ", self.state_world)
-        
-        beacon_id = 0
+
         if "irlock_beacon" in msg.name:
-            while msg.name != "irlock_beacon":
+            beacon_id = 0
+            while msg.name[beacon_id] != "irlock_beacon":
                 beacon_id += 1
             self.ir_beacon_state[0] = msg.pose[beacon_id].position.y
             self.ir_beacon_state[1] = msg.pose[beacon_id].position.x
@@ -77,7 +76,6 @@ class EnvWrapperNode:
             self.ir_beacon_state[4] = msg.twist[beacon_id].linear.x
             self.ir_beacon_state[5] = -1.0*msg.twist[beacon_id].linear.z
             # self.ir_beacon_twist_angular = msg.twist[beacon_id].angular
-            print("Beacon: ", self.ir_beacon_state)
 
     def act(self, action, normalize):
     
@@ -102,9 +100,9 @@ class EnvWrapperNode:
             while (self.state_world == 0).all():  # Wait for first message to arrive
                 pass
         
-        new_state = np.copy(self.state_world - self.ir_beacon_state)
-        reward, done = self.reward.get_reward(new_state, normalize(np.copy(new_state)), action, self.landed, self.eps_pos_xy, self.eps_vel_xy)
-        print(new_state, " ", reward)
+        new_state = np.copy(self.ir_beacon_state - self.state_world)
+        reward, done = self.reward.get_reward(new_state, normalize(np.copy(new_state)), action, self.landed,
+                                              self.eps_pos_xy, self.eps_vel_xy)
 
         self.action_received = False
         return new_state, reward, done
@@ -135,11 +133,13 @@ class EnvWrapperNode:
 
         self.state_world = np.zeros(self.state_shape)
         while (self.state_world == 0).all():  # Wait for first message to arrive
+            print("Waiting for state world")
             pass
 
         return np.copy(self.state_world)
         
     def play_reset_callback(self, msg):  # Used for synchronization with gazebo
+        print("Reset: ", msg)
         if msg.data[1] == 0:
             self.reset = False
 
