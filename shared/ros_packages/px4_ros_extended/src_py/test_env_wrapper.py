@@ -27,13 +27,20 @@ class TestWrapperNode:
     def test(self):
         while self.env.reset:  # Waiting for env to stop resetting
             pass
+            
+        cont_steps = 0
         inputs = self.env.play_env()  # Start landing listening in src_cpp/env.cpp
         while True:
             action = inputs[:3]
-            print(action)
-            inputs, reward, done = self.env.act(0.5*action, self.normalize_input)
-            if done:
+            print("Next action: ", action)
+            inputs, reward, done = self.env.act(0.3*action, self.normalize_input)
+            cont_steps += 1
+            if done or (cont_steps % self.info_dict['num-steps']==0 and cont_steps>0):
                 self.env.reset_env()
+                cont_steps = 0
+                while self.env.reset:  # Waiting for env to stop resetting
+                    pass
+                inputs = self.env.play_env()  # Start landing listening in src_cpp/env.cpp
 
 
 def spin_thread(node):

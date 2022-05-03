@@ -67,15 +67,7 @@ class EnvNode : public rclcpp::Node {
                 if (this->success_set_new_state && this->success_get_new_state && this->play==1 && this->reset==0 && this->micrortps_connected) {
                 	this->success_set_new_state = false;
 					// Set new state
-					geometry_msgs::msg::Point p = geometry_msgs::msg::Point();
-					geometry_msgs::msg::Pose pose = geometry_msgs::msg::Pose();
-					geometry_msgs::msg::Vector3 lin_vel = geometry_msgs::msg::Vector3();
-					geometry_msgs::msg::Vector3 ang_vel = geometry_msgs::msg::Vector3();
-					p.x = this->ir_beacon_pose.position.x+0.005; p.y = this->ir_beacon_pose.position.y; p.z = this->ir_beacon_pose.position.z;
-					pose.position = p; pose.orientation = this->ir_beacon_pose.orientation;
-					lin_vel = this->ir_beacon_twist.linear;
-					ang_vel = this->ir_beacon_twist.angular;
-					this->SetState("irlock_beacon", pose, lin_vel, ang_vel);
+					this->move_target_pos(this->ir_beacon_pose.position.x+0.01, this->ir_beacon_pose.position.y, this->ir_beacon_pose.position.z);
 				}
             };
 
@@ -169,6 +161,8 @@ class EnvNode : public rclcpp::Node {
         void GetState(const std::string & _entity);
         void SetState(const std::string & _entity, const geometry_msgs::msg::Pose & _pose, 
         			  const geometry_msgs::msg::Vector3 & _lin_vel, const geometry_msgs::msg::Vector3 & _ang_vel);
+        void new_target_position();
+        void move_target_pos(float x, float y, float z);
 };
 
 void EnvNode::land() const
@@ -252,9 +246,12 @@ void EnvNode::new_position(){
         this->w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
     } else {
         this->w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
-        this->w_x = -this->w_y;
+        this->w_y = -this->w_y;
     }
     this->w_z = this->min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_z-this->min_z)));
+    
+    // Resetting target
+    this->new_target_position();
 
     this->reset = 1;
     this->play = 0;
@@ -390,6 +387,38 @@ void EnvNode::SetState(const std::string & _entity,
   };
 
   auto response_future = set_state_client_->async_send_request(request, response_received_callback);
+}
+
+void EnvNode::move_target_pos(float x, float y, float z) {
+	geometry_msgs::msg::Point p = geometry_msgs::msg::Point();
+	geometry_msgs::msg::Pose pose = geometry_msgs::msg::Pose();
+	geometry_msgs::msg::Vector3 lin_vel = geometry_msgs::msg::Vector3();
+	geometry_msgs::msg::Vector3 ang_vel = geometry_msgs::msg::Vector3();
+	lin_vel = this->ir_beacon_twist.linear;
+	ang_vel = this->ir_beacon_twist.angular;
+	p.x = x; p.y = y; p.z = z;
+	pose.position = p; pose.orientation = this->ir_beacon_pose.orientation;
+	this->SetState("irlock_beacon", pose, lin_vel, ang_vel);
+}
+
+void EnvNode::new_target_position(){
+    // Sample random position for target
+    float sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+    float w_x, w_y;
+    if(sign >= 0.5){
+        w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
+    } else {
+        w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
+        w_x = -this->w_x;
+    }
+    sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+    if(sign >= 0.5){
+        w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
+    } else {
+        w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
+        w_y = -this->w_y;
+    }
+    this->move_target_pos(w_x, w_y, this->ir_beacon_pose.position.z);
 }
 
 int main(int argc, char* argv[])

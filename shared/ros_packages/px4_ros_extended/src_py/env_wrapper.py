@@ -133,13 +133,11 @@ class EnvWrapperNode:
 
         self.state_world = np.zeros(self.state_shape)
         while (self.state_world == 0).all():  # Wait for first message to arrive
-            print("Waiting for state world")
             pass
 
         return np.copy(self.state_world)
         
     def play_reset_callback(self, msg):  # Used for synchronization with gazebo
-        print("Reset: ", msg)
         if msg.data[1] == 0:
             self.reset = False
 
