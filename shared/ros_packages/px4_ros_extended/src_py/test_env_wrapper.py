@@ -31,11 +31,13 @@ class TestWrapperNode:
         cont_steps = 0
         inputs = self.env.play_env()  # Start landing listening in src_cpp/env.cpp
         while True:
+            # Difference between positions + difference between velocities
             action = inputs[:3]
+            action[2] = 0.2
             print("Next action: ", action)
-            inputs, reward, done = self.env.act(0.3*action, self.normalize_input)
+            inputs, reward, done = self.env.act(0.8*action, self.normalize_input)
             cont_steps += 1
-            if done or (cont_steps % self.info_dict['num-steps']==0 and cont_steps>0):
+            if done or (cont_steps % self.info_dict['num-steps'] == 0 and cont_steps > 0):
                 self.env.reset_env()
                 cont_steps = 0
                 while self.env.reset:  # Waiting for env to stop resetting

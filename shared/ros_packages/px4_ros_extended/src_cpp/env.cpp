@@ -67,7 +67,7 @@ class EnvNode : public rclcpp::Node {
                 if (this->success_set_new_state && this->success_get_new_state && this->play==1 && this->reset==0 && this->micrortps_connected) {
                 	this->success_set_new_state = false;
 					// Set new state
-					this->move_target_pos(this->ir_beacon_pose.position.x+0.01, this->ir_beacon_pose.position.y, this->ir_beacon_pose.position.z);
+					this->move_target_pos(this->ir_beacon_pose.position.x-0.008, this->ir_beacon_pose.position.y, this->ir_beacon_pose.position.z);
 				}
             };
 
@@ -389,6 +389,7 @@ void EnvNode::SetState(const std::string & _entity,
   auto response_future = set_state_client_->async_send_request(request, response_received_callback);
 }
 
+// Set new position for target using a service, sets the velocity to zero
 void EnvNode::move_target_pos(float x, float y, float z) {
 	geometry_msgs::msg::Point p = geometry_msgs::msg::Point();
 	geometry_msgs::msg::Pose pose = geometry_msgs::msg::Pose();
@@ -418,7 +419,10 @@ void EnvNode::new_target_position(){
         w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
         w_y = -this->w_y;
     }
+    // Use service to set new position
     this->move_target_pos(w_x, w_y, this->ir_beacon_pose.position.z);
+    this->ir_beacon_pose.position.x = w_x;
+    this->ir_beacon_pose.position.y = w_y;
 }
 
 int main(int argc, char* argv[])

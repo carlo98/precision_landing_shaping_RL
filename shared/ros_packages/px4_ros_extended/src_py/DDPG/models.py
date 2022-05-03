@@ -54,8 +54,10 @@ class Actor_small_sep_head(nn.Module):
         if self.action_dim == 3:
             self.vx_vy = nn.Linear(16, action_dim-1)
             self.vz = nn.Linear(16, 1)
+            init_weights(self.vz, 0.0, 0.2)
         elif self.action_dim == 2:
             self.vx_vy = nn.Linear(16, action_dim)
+        init_weights(self.vx_vy, 0.0, 0.2)
         
     def forward(self, state):
         """
@@ -93,6 +95,7 @@ class Actor_small_one_head(nn.Module):
         self.fc2 = nn.Linear(64, 32)
         self.fc3 = nn.Linear(32, 16)
         self.fc4 = nn.Linear(16, action_dim)
+        init_weights(self.fc4, 0.0, 0.2)
         
     def forward(self, state):
         """
@@ -157,6 +160,7 @@ class Actor_paper(nn.Module):
         self.fc1 = nn.Linear(state_dim, 200)
         self.fc2 = nn.Linear(200, 100)
         self.fc3 = nn.Linear(100, action_dim)
+        init_weights(self.fc4, 0.0, 0.2)
 
     def forward(self, state):
         """
@@ -171,3 +175,9 @@ class Actor_paper(nn.Module):
         action = torch.tanh(self.fc3(x))
 
         return action
+        
+        
+def init_weights(set_layer, mean, std):
+    nn.init.normal_(set_layer.weight, mean=mean, std=std)
+    nn.init.normal_(set_layer.bias, mean=mean, std=std)
+

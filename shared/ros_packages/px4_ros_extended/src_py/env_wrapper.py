@@ -83,7 +83,7 @@ class EnvWrapperNode:
 
         if not self.landed:
             if self.action_shape == 2:  # Predicting vx and vy
-                abs_height = np.abs(self.state_world[2])
+                abs_height = np.abs(self.ir_beacon_state[2]-self.state_world[2])
                 vel_z = 0.6 if abs_height > 1.0 else 0.9*abs_height
                 if abs_height <= 0.50:
                     vel_z = 0.25
@@ -127,15 +127,16 @@ class EnvWrapperNode:
     def play_env(self):  # Used for synchronization with gazebo
         play_reset_msg = Float32MultiArray()
         play_reset_msg.data = [1.0, 0.0]
-        # self.reward.init_shaping(self.state_world)  # Initialising shaping for reward
+        # self.reward.init_shaping(self.ir_beacon_state - self.state_world)  # Initialising shaping for reward
         self.play_reset_publisher.publish(play_reset_msg)
         self.play = True
 
         self.state_world = np.zeros(self.state_shape)
-        while (self.state_world == 0).all():  # Wait for first message to arrive
+        self.ir_beacon_state = np.zeros(self.state_shape)
+        while (self.state_world == 0).all() or (self.ir_beacon_state == 0).all():  # Wait for first messages to arrive
             pass
 
-        return np.copy(self.state_world)
+        return np.copy(self.ir_beacon_state - self.state_world)
         
     def play_reset_callback(self, msg):  # Used for synchronization with gazebo
         if msg.data[1] == 0:
