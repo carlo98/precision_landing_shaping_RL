@@ -67,7 +67,7 @@ class EnvNode : public rclcpp::Node {
                 if (this->success_set_new_state && this->success_get_new_state && this->play==1 && this->reset==0 && this->micrortps_connected) {
                 	this->success_set_new_state = false;
 					// Set new state
-					this->move_target_pos(this->ir_beacon_pose.position.x-0.008, this->ir_beacon_pose.position.y, this->ir_beacon_pose.position.z);
+					this->move_target_pos();
 				}
             };
 
@@ -95,7 +95,7 @@ class EnvNode : public rclcpp::Node {
                     this->takeoff(this->w_x, this->w_y, this->w_z);
                 }
             };
-            timer_target_ = this->create_wall_timer(20ms, target_timer_callback);  // 50 Hz
+            timer_target_ = this->create_wall_timer(milliseconds(this->target_period), target_timer_callback);  // 50 Hz
             timer_ = this->create_wall_timer(50ms, timer_callback);  // 20Hz
         }
 
@@ -129,14 +129,19 @@ class EnvNode : public rclcpp::Node {
         float eps_pos = 0.15;  // Tolerance for position
         float eps_vel = 0.05;  // Tolerance for velocity
         float vx, vy, vz = 0.0;
+        float target_vx = 0.1 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(0.4-0.1)));  // 0.3 minimum velocity
+        float target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(0.4-0.0)));
         float w_vx, w_vy, w_vz = 0.0;
         float x, y, z = 0.0;
         float prev_x, prev_y, prev_z = 0.0;
         int play = 0;  // if 1 listen to velocity from agent, 0 stop publish velocity
         int reset = 1;  // if 1 perform takeoff, 0 takeoff complete
-        int max_z = 3.0;
+        int target_period = 20;  // Period for target timer
+        string trajectory = "linear";  // String used to select target trajectory
+        bool velocity_reversed = false;  // flag used when checking the position of the target, avoid resetting multiple times
+        int max_z = 3.0;  // Keep up-to-date with max_height variable in "../src_py/params.yaml", i.e. max_height - 0.5
         int min_z = 1.8;
-        int max_xy = 3.0;
+        int max_xy = 3.0;  // Keep up-to-date with max_side variable in "../src_py/params.yaml", i.e. max_side - 2
         float w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_xy-0.0)));
         float w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_xy-0.0)));
         float w_z = min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_z-min_z)));
@@ -161,8 +166,10 @@ class EnvNode : public rclcpp::Node {
         void GetState(const std::string & _entity);
         void SetState(const std::string & _entity, const geometry_msgs::msg::Pose & _pose, 
         			  const geometry_msgs::msg::Vector3 & _lin_vel, const geometry_msgs::msg::Vector3 & _ang_vel);
-        void new_target_position();
-        void move_target_pos(float x, float y, float z);
+        void reset_target();
+        void move_target_pos();
+        void reset_target_velocity();
+        void check_pos_target();
 };
 
 void EnvNode::land() const
@@ -251,7 +258,7 @@ void EnvNode::new_position(){
     this->w_z = this->min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_z-this->min_z)));
     
     // Resetting target
-    this->new_target_position();
+    this->reset_target();
 
     this->reset = 1;
     this->play = 0;
@@ -390,22 +397,34 @@ void EnvNode::SetState(const std::string & _entity,
 }
 
 // Set new position for target using a service, sets the velocity to zero
-void EnvNode::move_target_pos(float x, float y, float z) {
+void EnvNode::move_target_pos() {
 	geometry_msgs::msg::Point p = geometry_msgs::msg::Point();
 	geometry_msgs::msg::Pose pose = geometry_msgs::msg::Pose();
 	geometry_msgs::msg::Vector3 lin_vel = geometry_msgs::msg::Vector3();
 	geometry_msgs::msg::Vector3 ang_vel = geometry_msgs::msg::Vector3();
 	lin_vel = this->ir_beacon_twist.linear;
 	ang_vel = this->ir_beacon_twist.angular;
+	
+	this->check_pos_target();  // If target is near border make it go backwards
+	
+	if(this->trajectory.compare("linear")==0){
+		x = this->ir_beacon_pose.position.x + this->target_vx* this->target_period/1000;
+		y = this->ir_beacon_pose.position.y + this->target_vy* this->target_period/1000;
+		z = this->ir_beacon_pose.position.z;
+	}
+	
 	p.x = x; p.y = y; p.z = z;
 	pose.position = p; pose.orientation = this->ir_beacon_pose.orientation;
 	this->SetState("irlock_beacon", pose, lin_vel, ang_vel);
 }
 
-void EnvNode::new_target_position(){
+void EnvNode::reset_target(){
+	// Resetting target velocity
+	float sign, w_x, w_y;
+    this->reset_target_velocity();
+    
     // Sample random position for target
-    float sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-    float w_x, w_y;
+    sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
     if(sign >= 0.5){
         w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
     } else {
@@ -420,9 +439,37 @@ void EnvNode::new_target_position(){
         w_y = -this->w_y;
     }
     // Use service to set new position
-    this->move_target_pos(w_x, w_y, this->ir_beacon_pose.position.z);
     this->ir_beacon_pose.position.x = w_x;
     this->ir_beacon_pose.position.y = w_y;
+    this->move_target_pos();  // Must be called after the new position has been set in this->ir_beacon_pose
+}
+
+void EnvNode::reset_target_velocity(){
+	float sign;
+    this->target_vx = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(0.4)));
+    this->target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(0.4)));
+    while(this->target_vx<0.1 && this->target_vy<0.1) {  // Avoid having a slow target
+        this->target_vx = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(0.4)));
+    	this->target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(0.4)));
+    }
+    sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+    if(sign >= 0.5){
+        this->target_vx = -this->target_vx;
+    }
+    sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+    if(sign >= 0.5){
+        this->target_vy = -this->target_vy;
+    }
+    this->velocity_reversed = false;
+}
+
+void EnvNode::check_pos_target(){
+    // this->max_xy is the maximum position in which the target can spawn, this->max_xy+2 is the maximum position in which the drone can fly
+	if(!this->velocity_reversed && (std::abs(this->ir_beacon_pose.position.x)>this->max_xy+1 || std::abs(this->ir_beacon_pose.position.y)>this->max_xy+1)){
+		this->target_vx = -this->target_vx;
+		this->target_vy = -this->target_vy;
+		this->velocity_reversed = true;
+	}
 }
 
 int main(int argc, char* argv[])

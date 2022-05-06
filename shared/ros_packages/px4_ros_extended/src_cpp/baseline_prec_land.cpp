@@ -58,9 +58,6 @@ class BaselinePrecLandNode : public rclcpp::Node {
 				        this->float32Vector.push_back(2.0 * (this->x_drone_world - this->ir_beacon_pose.position.x));
 				        this->float32Vector.push_back(2.0 * (this->y_drone_world - this->ir_beacon_pose.position.y));
 				        this->float32Vector.push_back(-0.1);
-				        
-				        cout<<this->x_drone_world<<" "<<this->ir_beacon_pose.position.x<<endl;
-				        cout<<this->y_drone_world<<" "<<this->ir_beacon_pose.position.y<<endl;
 
 				        this->float32Msg.data = this->float32Vector;
 				        cout << "Pos (x="<<(this->x_drone_world - this->ir_beacon_pose.position.x)<<", y="<<(this->y_drone_world - this->ir_beacon_pose.position.y)<<", z="<<this->z_drone_world<<")"<< endl;
