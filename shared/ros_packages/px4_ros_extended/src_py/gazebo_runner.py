@@ -54,13 +54,13 @@ class GazeboRunnerNode:
 
         if self.train:
             self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo_iris_irlock", "PX4_SIM_SPEED_FACTOR=6",
-                                            "HEADLESS=1"],
+                                            "HEADLESS=1", "PX4_NO_FOLLOW_MODE=1"],
                                            cwd="/src/PX4-Autopilot")
         elif not self.train and not self.headless:
             self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo_iris_irlock", "PX4_NO_FOLLOW_MODE=1"],
                                            cwd="/src/PX4-Autopilot")
         elif not self.train and self.headless:
-            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo_iris_irlock", "HEADLESS=1"],
+            self.gazebo = subprocess.Popen(["make", "px4_sitl_rtps", "gazebo_iris_irlock", "HEADLESS=1", "PX4_NO_FOLLOW_MODE=1"],
                                            cwd="/src/PX4-Autopilot")
         time.sleep(5)
         self.cont_takeoff_failing = 0
