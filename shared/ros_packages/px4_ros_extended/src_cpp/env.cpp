@@ -18,6 +18,7 @@
 #include <px4_msgs/msg/vehicle_status.hpp>
 #include <gazebo_msgs/srv/get_entity_state.hpp>
 #include <gazebo_msgs/srv/set_entity_state.hpp>
+#include "rcl_interfaces/msg/set_parameters_result.hpp"
 
 
 using namespace std;
@@ -34,6 +35,34 @@ class EnvNode : public rclcpp::Node {
     public:
         EnvNode() : Node("env_node")
         {
+        
+        	this->declare_parameter<float>("max_vel_target", 0.8);  
+			this->max_vel_target = this->get_parameter("max_vel_target").get_value<float>();
+			
+			this->declare_parameter<string>("trajectory", "linear");
+			this->trajectory = this->get_parameter("trajectory").get_value<string>();
+			
+			this->declare_parameter<float>("max_height", 3.5);
+			this->max_height = this->get_parameter("max_height").get_value<float>();
+			this->max_height -= 0.5;  // Buffer, avoid "out of area"
+			
+			this->declare_parameter<float>("min_height", 1.8);
+			this->min_height = this->get_parameter("min_height").get_value<float>();
+			
+			this->declare_parameter<float>("max_side", 5.0); 
+			this->max_side = this->get_parameter("max_side").get_value<float>();
+			this->max_side -= 2;  // Buffer, avoid "out of area"
+			
+			this->declare_parameter<float>("min_vel_xy", 0.4);
+			this->min_vel_xy = this->get_parameter("min_vel_xy").get_value<float>();
+			
+			this->w_z = min_height + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_height-min_height)));
+			this->w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_side-0.0)));
+			this->w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_side-0.0)));
+			this->target_w = min_vel_xy + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-min_vel_xy)));  // Angular velocity
+			this->target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-0.0)));
+			this->target_vx = min_vel_xy + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-min_vel_xy)));
+			
             vehicle_command_publisher_ = this->create_publisher<VehicleCommand>("fmu/vehicle_command/in", 2);
             offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("fmu/offboard_control_mode/in", 2);
             odometry_subscriber = this->create_subscription<VehicleOdometry>("fmu/vehicle_odometry/out", 1, std::bind(&EnvNode::odometry_callback, this, _1));
@@ -138,28 +167,22 @@ class EnvNode : public rclcpp::Node {
         Float32MultiArray float32Msg = Float32MultiArray();
         std::vector<float> float32Vector = std::vector<float>(3);
         int offboard_setpoint_counter_ = 0;
-        float eps_pos = 0.15;  // Tolerance for position
-        float eps_vel = 0.05;  // Tolerance for velocity
+        float eps_pos = 0.15;  // Tolerance for position, used in takeoff
+        float eps_vel = 0.05;  // Tolerance for velocity, used in takeoff
         float vx, vy, vz = 0.0;
-        float target_vx = 0.4 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target-0.4)));  // 0.4 minimum velocity
-        float target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target-0.0)));
-        float target_w = 0.4 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target-0.4)));  // angular velocity
-        float max_vel_target = 0.8;
+        float target_vx, target_vy, target_w;
+        float max_vel_target;
         float w_vx, w_vy, w_vz = 0.0;
         float x, y, z, r = 0.0;
         float prev_x, prev_y, prev_z = 0.0;
         int play = 0;  // if 1 listen to velocity from agent, 0 stop publish velocity
         int reset = 1;  // if 1 perform takeoff, 0 takeoff complete
         int target_period = 10;  // Period for target timer
-        string trajectory = "circular";  // String used to select target trajectory
+        string trajectory;  // String used to select target trajectory
         float circular_angle = 0.0;  // Used, if trajectory=='circular', to keep track of position in the circle
         bool velocity_reversed = false;  // flag used when checking the position of the target, avoid resetting multiple times
-        int max_z = 3.0;  // Keep up-to-date with max_height variable in "../src_py/params.yaml", i.e. max_height - 0.5
-        int min_z = 1.8;
-        int max_xy = 3.0;  // Keep up-to-date with max_side variable in "../src_py/params.yaml", i.e. max_side - 2
-        float w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_xy-0.0)));
-        float w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_xy-0.0)));
-        float w_z = min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_z-min_z)));
+        float max_height, min_height, max_side, min_vel_xy;
+        float w_x, w_y, w_z;
         bool micrortps_connected = false;  // Whether micrortps_agent and gazebo are ready or not
         bool armed_flag = false;  // Drone armed
         geometry_msgs::msg::Pose ir_beacon_pose;
@@ -259,19 +282,19 @@ void EnvNode::new_position(){
     // Sample random position
     float sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
     if(sign >= 0.5){
-        this->w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
+        this->w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side-0.0)));
     } else {
-        this->w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
+        this->w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side-0.0)));
         this->w_x = -this->w_x;
     }
     sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
     if(sign >= 0.5){
-        this->w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
+        this->w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side-0.0)));
     } else {
-        this->w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy-0.0)));
+        this->w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side-0.0)));
         this->w_y = -this->w_y;
     }
-    this->w_z = this->min_z + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_z-this->min_z)));
+    this->w_z = this->min_height + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_height-this->min_height)));
     
     // Resetting target
     this->reset_target();
@@ -449,16 +472,16 @@ void EnvNode::reset_target(){
     if(this->trajectory.compare("linear")==0){
 		sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 		if(sign >= 0.5){
-		    w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
+		    w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side/2-0.0)));
 		} else {
-		    w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
+		    w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side/2-0.0)));
 		    w_x = -this->w_x;
 		}
 		sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 		if(sign >= 0.5){
-		    w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
+		    w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side/2-0.0)));
 		} else {
-		    w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
+		    w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side/2-0.0)));
 		    w_y = -this->w_y;
 		}
     } else if (this->trajectory.compare("circular")==0){
@@ -505,8 +528,8 @@ void EnvNode::reset_target_velocity(){
 }
 
 void EnvNode::check_pos_target(){
-    // this->max_xy is the maximum position in which the target can spawn, this->max_xy+2 is the maximum position in which the drone can fly
-	if(!this->velocity_reversed && (std::abs(this->ir_beacon_pose.position.x)>this->max_xy+1 || std::abs(this->ir_beacon_pose.position.y)>this->max_xy+1)){
+    // this->max_side is the maximum position in which the target can spawn, this->max_side+2 is the maximum position in which the drone can fly
+	if(!this->velocity_reversed && (std::abs(this->ir_beacon_pose.position.x)>this->max_side+1 || std::abs(this->ir_beacon_pose.position.y)>this->max_side+1)){
 		this->target_vx = -this->target_vx;
 		this->target_vy = -this->target_vy;
 		this->velocity_reversed = true;

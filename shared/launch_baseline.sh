@@ -15,6 +15,6 @@ tmux new-window -t $SESSION:1 -n 'env + baseline'
 tmux send-keys "ros2 run px4_ros_extended baseline_prec_land" C-m
 
 tmux split-window -h -t $SESSION:1
-tmux send-keys "ros2 run px4_ros_extended env" C-m
+tmux send-keys "ros2 launch px4_ros_extended env.launch.py" C-m
 
 tmux attach-session -t $SESSION:1

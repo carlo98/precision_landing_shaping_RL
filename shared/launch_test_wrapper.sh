@@ -15,6 +15,6 @@ tmux new-window -t $SESSION:1 -n 'env + test wrapper'
 tmux send-keys "ros2 run px4_ros_extended test_env_wrapper.py" C-m
 
 tmux split-window -h -t $SESSION:1
-tmux send-keys "ros2 run px4_ros_extended env" C-m
+tmux send-keys "ros2 launch px4_ros_extended env_train.launch.py" C-m
 
 tmux attach-session -t $SESSION:1
