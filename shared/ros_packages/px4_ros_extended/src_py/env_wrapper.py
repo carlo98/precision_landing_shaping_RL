@@ -141,6 +141,18 @@ class EnvWrapperNode:
     def play_reset_callback(self, msg):  # Used for synchronization with gazebo
         if msg.data[1] == 0:
             self.reset = False
+            
+    def get_agent_position(self):
+        return self.state_world[0], self.state_world[1], self.state_world[2]
+        
+    def get_target_position(self):
+        return self.ir_beacon_state[0], self.ir_beacon_state[1], self.ir_beacon_state[2]
+        
+    def get_agent_velocity(self):
+        return self.state_world[3], self.state_world[4], self.state_world[5]
+        
+    def get_target_velocity(self):
+        return self.ir_beacon_state[3], self.ir_beacon_state[4], self.ir_beacon_state[5]
 
     def shutdown_gazebo(self):
         """

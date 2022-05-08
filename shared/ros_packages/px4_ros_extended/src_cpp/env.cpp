@@ -78,6 +78,18 @@ class EnvNode : public rclcpp::Node {
 
 		            // Arm the vehicle
 		            this->arm();
+		            
+		            // Get targetstate
+		            this->GetState("irlock_beacon");
+		            // If trajectory is circular initialize radius and angular velocity and position on circle
+					if(this->success_get_new_state && this->trajectory.compare("circular")==0) {
+						double theta = 2 * M_PI * (double)rand() / RAND_MAX;
+						this->r = 1.0+ static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(3.0-1.0)));  // Minimum and maximum radius
+						this->success_set_new_state = false;
+						this->ir_beacon_pose.position.x = this->r * cos(theta);
+						this->ir_beacon_pose.position.y = this->r * sin(theta);
+						this->move_target_pos();  // Must be called after the new position has been set in this->ir_beacon_pose
+					}
 		            usleep(1000000);
                 }
 
@@ -95,7 +107,7 @@ class EnvNode : public rclcpp::Node {
                     this->takeoff(this->w_x, this->w_y, this->w_z);
                 }
             };
-            timer_target_ = this->create_wall_timer(milliseconds(this->target_period), target_timer_callback);  // 50 Hz
+            timer_target_ = this->create_wall_timer(milliseconds(this->target_period), target_timer_callback);
             timer_ = this->create_wall_timer(50ms, timer_callback);  // 20Hz
         }
 
@@ -129,15 +141,18 @@ class EnvNode : public rclcpp::Node {
         float eps_pos = 0.15;  // Tolerance for position
         float eps_vel = 0.05;  // Tolerance for velocity
         float vx, vy, vz = 0.0;
-        float target_vx = 0.1 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(0.4-0.1)));  // 0.3 minimum velocity
-        float target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(0.4-0.0)));
+        float target_vx = 0.4 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target-0.4)));  // 0.4 minimum velocity
+        float target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target-0.0)));
+        float target_w = 0.4 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target-0.4)));  // angular velocity
+        float max_vel_target = 0.8;
         float w_vx, w_vy, w_vz = 0.0;
-        float x, y, z = 0.0;
+        float x, y, z, r = 0.0;
         float prev_x, prev_y, prev_z = 0.0;
         int play = 0;  // if 1 listen to velocity from agent, 0 stop publish velocity
         int reset = 1;  // if 1 perform takeoff, 0 takeoff complete
-        int target_period = 20;  // Period for target timer
-        string trajectory = "linear";  // String used to select target trajectory
+        int target_period = 10;  // Period for target timer
+        string trajectory = "circular";  // String used to select target trajectory
+        float circular_angle = 0.0;  // Used, if trajectory=='circular', to keep track of position in the circle
         bool velocity_reversed = false;  // flag used when checking the position of the target, avoid resetting multiple times
         int max_z = 3.0;  // Keep up-to-date with max_height variable in "../src_py/params.yaml", i.e. max_height - 0.5
         int min_z = 1.8;
@@ -170,6 +185,7 @@ class EnvNode : public rclcpp::Node {
         void move_target_pos();
         void reset_target_velocity();
         void check_pos_target();
+        void update_circular_angle();
 };
 
 void EnvNode::land() const
@@ -411,8 +427,13 @@ void EnvNode::move_target_pos() {
 		x = this->ir_beacon_pose.position.x + this->target_vx* this->target_period/1000;
 		y = this->ir_beacon_pose.position.y + this->target_vy* this->target_period/1000;
 		z = this->ir_beacon_pose.position.z;
+	} else if(this->trajectory.compare("circular")==0){
+	    // Using only of velocity as module
+		x = this->r * cos(this->circular_angle);
+		y = this->r * sin(this->circular_angle);
+		z = this->ir_beacon_pose.position.z;
+		this->update_circular_angle();
 	}
-	
 	p.x = x; p.y = y; p.z = z;
 	pose.position = p; pose.orientation = this->ir_beacon_pose.orientation;
 	this->SetState("irlock_beacon", pose, lin_vel, ang_vel);
@@ -421,22 +442,30 @@ void EnvNode::move_target_pos() {
 void EnvNode::reset_target(){
 	// Resetting target velocity
 	float sign, w_x, w_y;
-    this->reset_target_velocity();
+    this->reset_target_velocity();  // Needs to be called before "move_target_pos"
+    this->circular_angle = 0.0;  // Reset angle, position in circle
     
     // Sample random position for target
-    sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-    if(sign >= 0.5){
-        w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
-    } else {
-        w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
-        w_x = -this->w_x;
-    }
-    sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-    if(sign >= 0.5){
-        w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
-    } else {
-        w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
-        w_y = -this->w_y;
+    if(this->trajectory.compare("linear")==0){
+		sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		if(sign >= 0.5){
+		    w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
+		} else {
+		    w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
+		    w_x = -this->w_x;
+		}
+		sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		if(sign >= 0.5){
+		    w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
+		} else {
+		    w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_xy/2-0.0)));
+		    w_y = -this->w_y;
+		}
+    } else if (this->trajectory.compare("circular")==0){
+    	double theta = 2 * M_PI * (double)rand() / RAND_MAX;
+    	this->r = 1.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(3.0-1.0)));  // Minimum and maximum radius
+		w_x = this->r * cos(theta);
+		w_y = this->r * sin(theta);
     }
     // Use service to set new position
     this->ir_beacon_pose.position.x = w_x;
@@ -446,20 +475,32 @@ void EnvNode::reset_target(){
 
 void EnvNode::reset_target_velocity(){
 	float sign;
-    this->target_vx = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(0.4)));
-    this->target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(0.4)));
-    while(this->target_vx<0.1 && this->target_vy<0.1) {  // Avoid having a slow target
-        this->target_vx = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(0.4)));
-    	this->target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(0.4)));
+	
+	if(this->trajectory.compare("linear")==0) {
+		this->target_vx = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target)));
+		this->target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target)));
+		while(this->target_vx<0.4 && this->target_vy<0.4) {  // Avoid having a slow target
+		    this->target_vx = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target)));
+			this->target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target)));
+		}
+		sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		if(sign >= 0.5){
+		    this->target_vy = -this->target_vy;
+		}
+		
+		sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		if(sign >= 0.5){
+			this->target_vx = -this->target_vx;
+		}
+    } else if(this->trajectory.compare("circular")==0) {
+        this->target_w = 0.4 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target-0.4)));
+        sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		if(sign >= 0.5){
+			this->target_w = -this->target_w;
+		}
     }
-    sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-    if(sign >= 0.5){
-        this->target_vx = -this->target_vx;
-    }
-    sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-    if(sign >= 0.5){
-        this->target_vy = -this->target_vy;
-    }
+    
+    
     this->velocity_reversed = false;
 }
 
@@ -469,6 +510,15 @@ void EnvNode::check_pos_target(){
 		this->target_vx = -this->target_vx;
 		this->target_vy = -this->target_vy;
 		this->velocity_reversed = true;
+	}
+}
+
+void EnvNode::update_circular_angle(){
+	this->circular_angle += (this->target_w / this->r) * this->target_period/1000;
+	if(this->circular_angle>=2*M_PI){
+		this->circular_angle -= 2*M_PI;
+	} else if(this->circular_angle<=-2*M_PI){
+		this->circular_angle += 2*M_PI;
 	}
 }
 
