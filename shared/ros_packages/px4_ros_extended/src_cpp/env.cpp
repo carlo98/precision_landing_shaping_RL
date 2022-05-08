@@ -84,15 +84,11 @@ class EnvNode : public rclcpp::Node {
 		            // If trajectory is circular initialize radius and angular velocity and position on circle
 					if(this->success_get_new_state && this->trajectory.compare("circular")==0) {
 						double theta = 2 * M_PI * (double)rand() / RAND_MAX;
-						double a = sqrt((double)rand() / RAND_MAX);
-						this->r = 1.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(3.0-1.0)));  // Minimum and maximum radius
-						this->target_w = this->target_vx / this->r;
+						this->r = 1.0+ static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(3.0-1.0)));  // Minimum and maximum radius
 						this->success_set_new_state = false;
-						while(!this->success_set_new_state){
-							this->ir_beacon_pose.position.x = a * this->r * cos(theta);
-							this->ir_beacon_pose.position.y = a * this->r * sin(theta);
-							this->move_target_pos();  // Must be called after the new position has been set in this->ir_beacon_pose
-						}
+						this->ir_beacon_pose.position.x = this->r * cos(theta);
+						this->ir_beacon_pose.position.y = this->r * sin(theta);
+						this->move_target_pos();  // Must be called after the new position has been set in this->ir_beacon_pose
 					}
 		            usleep(1000000);
                 }
@@ -145,9 +141,9 @@ class EnvNode : public rclcpp::Node {
         float eps_pos = 0.15;  // Tolerance for position
         float eps_vel = 0.05;  // Tolerance for velocity
         float vx, vy, vz = 0.0;
-        float target_vx = 0.3 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target-0.3)));  // 0.3 minimum velocity
+        float target_vx = 0.4 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target-0.4)));  // 0.4 minimum velocity
         float target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target-0.0)));
-        float target_w = 0.0;
+        float target_w = 0.4 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target-0.4)));  // angular velocity
         float max_vel_target = 0.8;
         float w_vx, w_vy, w_vz = 0.0;
         float x, y, z, r = 0.0;
@@ -432,10 +428,11 @@ void EnvNode::move_target_pos() {
 		y = this->ir_beacon_pose.position.y + this->target_vy* this->target_period/1000;
 		z = this->ir_beacon_pose.position.z;
 	} else if(this->trajectory.compare("circular")==0){
-	    this->update_circular_angle();
-		x = this->ir_beacon_pose.position.x + this->target_vx*cos(this->circular_angle)* this->target_period/1000;
-		y = this->ir_beacon_pose.position.y + this->target_vy*sin(this->circular_angle)* this->target_period/1000;
+	    // Using only of velocity as module
+		x = this->r * cos(this->circular_angle);
+		y = this->r * sin(this->circular_angle);
 		z = this->ir_beacon_pose.position.z;
+		this->update_circular_angle();
 	}
 	p.x = x; p.y = y; p.z = z;
 	pose.position = p; pose.orientation = this->ir_beacon_pose.orientation;
@@ -445,7 +442,7 @@ void EnvNode::move_target_pos() {
 void EnvNode::reset_target(){
 	// Resetting target velocity
 	float sign, w_x, w_y;
-    this->reset_target_velocity();
+    this->reset_target_velocity();  // Needs to be called before "move_target_pos"
     this->circular_angle = 0.0;  // Reset angle, position in circle
     
     // Sample random position for target
@@ -466,9 +463,9 @@ void EnvNode::reset_target(){
 		}
     } else if (this->trajectory.compare("circular")==0){
     	double theta = 2 * M_PI * (double)rand() / RAND_MAX;
-    	double a = sqrt((double)rand() / RAND_MAX);
-		w_x = a * this->r * cos(theta);
-		w_y = a * this->r * sin(theta);
+    	this->r = 1.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(3.0-1.0)));  // Minimum and maximum radius
+		w_x = this->r * cos(theta);
+		w_y = this->r * sin(theta);
     }
     // Use service to set new position
     this->ir_beacon_pose.position.x = w_x;
@@ -478,11 +475,11 @@ void EnvNode::reset_target(){
 
 void EnvNode::reset_target_velocity(){
 	float sign;
-	this->target_vx = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target)));
 	
 	if(this->trajectory.compare("linear")==0) {
+		this->target_vx = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target)));
 		this->target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target)));
-		while(this->target_vx<0.3 && this->target_vy<0.3) {  // Avoid having a slow target
+		while(this->target_vx<0.4 && this->target_vy<0.4) {  // Avoid having a slow target
 		    this->target_vx = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target)));
 			this->target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target)));
 		}
@@ -490,16 +487,20 @@ void EnvNode::reset_target_velocity(){
 		if(sign >= 0.5){
 		    this->target_vy = -this->target_vy;
 		}
+		
+		sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		if(sign >= 0.5){
+			this->target_vx = -this->target_vx;
+		}
     } else if(this->trajectory.compare("circular")==0) {
-    	this->r = 1.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(3.0-1.0)));  // Minimum and maximum radius
-        this->target_w = this->target_vx / this->r;
+        this->target_w = 0.4 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_vel_target-0.4)));
+        sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
+		if(sign >= 0.5){
+			this->target_w = -this->target_w;
+		}
     }
     
-    sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-	if(sign >= 0.5){
-		this->target_vx = -this->target_vx;
-		if(this->trajectory.compare("circular")==0) this->target_w = -this->target_w;
-	}
+    
     this->velocity_reversed = false;
 }
 
@@ -513,7 +514,7 @@ void EnvNode::check_pos_target(){
 }
 
 void EnvNode::update_circular_angle(){
-	this->circular_angle += this->target_w* this->target_period/1000;
+	this->circular_angle += (this->target_w / this->r) * this->target_period/1000;
 	if(this->circular_angle>=2*M_PI){
 		this->circular_angle -= 2*M_PI;
 	} else if(this->circular_angle<=-2*M_PI){
