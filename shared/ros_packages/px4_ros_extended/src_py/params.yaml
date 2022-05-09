@@ -16,7 +16,7 @@ max_vel_z: 1.0
 max_vel_xy: 1.0
 min_vel_xy: 0.4
 max_vel_target: 0.8
-trajectory: "circular"
+trajectory: "linear"
 train_window_reward: 100
 test_window_reward: 3
 evaluate_freq: 500
