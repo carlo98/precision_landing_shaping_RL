@@ -9,10 +9,14 @@ max_memory_len: 35000  # 100 episodes
 mem_to_use: 8192  # Try to keep this a multiple of the batch size
 min_mem: 1024  # Minimal memory to use
 log_interval_episodes: 100
-max_height: 3.5  # Remember to update also variable in env.cpp
-max_side: 5.0  # Remember to update also variable in env.cpp
+max_height: 3.5
+min_height: 1.8
+max_side: 5.0
 max_vel_z: 1.0
 max_vel_xy: 1.0
+min_vel_xy: 0.4
+max_vel_target: 0.8
+trajectory: "linear"
 train_window_reward: 100
 test_window_reward: 3
 evaluate_freq: 500

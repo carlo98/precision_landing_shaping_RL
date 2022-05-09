@@ -12,6 +12,6 @@ tmux send-keys "ros2 run px4_ros_extended ddpg_agent.py -p /use_sim_time:=true" 
 sleep 3  # Waiting for micrortps_agent process started by agent
 
 tmux split-window -h -t $SESSION:1
-tmux send-keys "ros2 run px4_ros_extended env -p /use_sim_time:=true" C-m
+tmux send-keys "ros2 launch px4_ros_extended env_train.launch.py" C-m
 
 tmux attach-session -t $SESSION:1
