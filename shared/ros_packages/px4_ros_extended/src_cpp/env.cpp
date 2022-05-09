@@ -53,15 +53,15 @@ class EnvNode : public rclcpp::Node {
 			this->max_side = this->get_parameter("max_side").get_value<float>();
 			this->max_side -= 2;  // Buffer, avoid "out of area"
 			
-			this->declare_parameter<float>("min_vel_xy", 0.4);
-			this->min_vel_xy = this->get_parameter("min_vel_xy").get_value<float>();
+			this->declare_parameter<float>("min_vel_target", 0.4);
+			this->min_vel_target = this->get_parameter("min_vel_target").get_value<float>();
 			
 			this->w_z = min_height + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_height-min_height)));
 			this->w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_side-0.0)));
 			this->w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_side-0.0)));
-			this->target_w = min_vel_xy + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-min_vel_xy)));  // Angular velocity
+			this->target_w = min_vel_target + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-min_vel_target)));  // Angular velocity
 			this->target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-0.0)));
-			this->target_vx = min_vel_xy + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-min_vel_xy)));
+			this->target_vx = min_vel_target + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-min_vel_target)));
 			
             vehicle_command_publisher_ = this->create_publisher<VehicleCommand>("fmu/vehicle_command/in", 2);
             offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("fmu/offboard_control_mode/in", 2);
@@ -181,7 +181,7 @@ class EnvNode : public rclcpp::Node {
         string trajectory;  // String used to select target trajectory
         float circular_angle = 0.0;  // Used, if trajectory=='circular', to keep track of position in the circle
         bool velocity_reversed = false;  // flag used when checking the position of the target, avoid resetting multiple times
-        float max_height, min_height, max_side, min_vel_xy;
+        float max_height, min_height, max_side, min_vel_target;
         float w_x, w_y, w_z;
         bool micrortps_connected = false;  // Whether micrortps_agent and gazebo are ready or not
         bool armed_flag = false;  // Drone armed

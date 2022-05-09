@@ -72,6 +72,9 @@ In "shared/ros_packages/px4_ros_extended/src_py/params.yaml" you can set a few p
 Pay particular attention to the model name, the target dimension and the observation and action shape, as the test script 
 will need to know these values.
 
+Among these parameters area also those that let you change the way in which the target moves, such as its maximum and 
+minimum velocity or the type of movement, i.e. "linear" or "circular", and the area in which the agent can move.
+
 #### Plots and Models
 In the folder "shared/logs" are saved the rewards in pickle files, you can have a look at the jupyter notebook 
 "shared/Log Analysis.ipynb" to use them and print a few plots.
@@ -125,13 +128,13 @@ colcon build --packages-select px4_ros_extended
 In order to speed-up the simulation one can start it with these commands, they are already used in the bash scripts and 
 in gazebo_runner.py:
 ```
-PX4_SIM_SPEED_FACTOR=5 HEADLESS=1 make px4_sitl_rtps gazebo
+PX4_SIM_SPEED_FACTOR=6 HEADLESS=1 make px4_sitl_rtps gazebo
 micrortps_agent -t UDP
 ros2 run px4_ros_extended ddpg_agent.py -p /use_sim_time:=true
-ros2 run px4_ros_extended env -p /use_sim_time:=true
+ros2 launch px4_ros_extended env_train.launch.py
 ```
 
-In order to avoid following the drone, used in "gazebo_runner.py --test" 
+In order to avoid following the drone 
 ```
 PX4_NO_FOLLOW_MODE=1 make px4_sitl_rtps gazebo
 ```

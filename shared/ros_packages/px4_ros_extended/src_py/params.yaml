@@ -1,22 +1,22 @@
 # General
-action_space: 3
+action_space: 3  # Number of actions: 2 or 3, i.e. (vx, vy) or (vx, vy, vz)
 obs_shape: 6  # 5 or 6, add vz
 num_env_episodes: 6009  # Keep it a multiple of evaluate_freq and add evaluate_ep at the end
 train_freq: 1  # In episodes
-num-steps: 350
-seed: 5
+num-steps: 350  # Max steps for each episode
+seed: 5  # Random seed
 max_memory_len: 35000  # 100 episodes
 mem_to_use: 8192  # Try to keep this a multiple of the batch size
 min_mem: 1024  # Minimal memory to use
 log_interval_episodes: 100
-max_height: 3.5
-min_height: 1.8
-max_side: 5.0
-max_vel_z: 1.0
-max_vel_xy: 1.0
-min_vel_xy: 0.4
-max_vel_target: 0.8
-trajectory: "linear"
+max_height: 3.5  # Max height of cube in which the agent can move
+min_height: 1.8  # Min height at which the agent can spawn
+max_side: 5.0  # Side of square in which the agent can move
+max_vel_xy: 1.0  # Max velocity of agent in x and y axis
+max_vel_z: 1.0  # Max velocity of agent in z-axis
+max_vel_target: 0.8  # Max velocity of target
+min_vel_target: 0.4  # Min velocity of target
+trajectory: "linear"  # Target movements: "linear" or "circular"
 train_window_reward: 100
 test_window_reward: 3
 evaluate_freq: 500
