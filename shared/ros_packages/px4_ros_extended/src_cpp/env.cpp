@@ -39,7 +39,7 @@ class EnvNode : public rclcpp::Node {
         	this->declare_parameter<float>("max_vel_target", 0.8);  
 			this->max_vel_target = this->get_parameter("max_vel_target").get_value<float>();
 			
-			this->declare_parameter<string>("trajectory", "linear");
+			this->declare_parameter<string>("trajectory", "still");
 			this->trajectory = this->get_parameter("trajectory").get_value<string>();
 			
 			this->declare_parameter<float>("max_height", 3.5);
@@ -59,9 +59,16 @@ class EnvNode : public rclcpp::Node {
 			this->w_z = min_height + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_height-min_height)));
 			this->w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_side-0.0)));
 			this->w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_side-0.0)));
-			this->target_w = min_vel_target + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-min_vel_target)));  // Angular velocity
-			this->target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-0.0)));
-			this->target_vx = min_vel_target + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-min_vel_target)));
+			
+			if(this->trajectory.compare("still")==0){  // If still target
+				this->target_w = 0.0;  // Angular velocity target
+				this->target_vy = 0.0;
+				this->target_vx = 0.0;
+			} else {
+				this->target_w = min_vel_target + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-min_vel_target)));  // Angular velocity target
+				this->target_vy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-0.0)));
+				this->target_vx = min_vel_target + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(max_vel_target-min_vel_target)));
+			}
 			
             vehicle_command_publisher_ = this->create_publisher<VehicleCommand>("fmu/vehicle_command/in", 2);
             offboard_control_mode_publisher_ = this->create_publisher<OffboardControlMode>("fmu/offboard_control_mode/in", 2);
@@ -92,11 +99,18 @@ class EnvNode : public rclcpp::Node {
             auto target_timer_callback = [this]() -> void {
                 // Get state
                 this->GetState("irlock_beacon");
-                // If listening to actions and target state available
-                if (this->success_set_new_state && this->success_get_new_state && this->play==1 && this->reset==0 && this->micrortps_connected) {
-                	this->success_set_new_state = false;
-					// Set new state
-					this->move_target_pos();
+                
+                if(this->trajectory.compare("still")==0){  // If still target
+                    if (this->success_get_new_state) {
+		        		this->move_target_pos(this->new_target_wx, this->new_target_wy, this->ir_beacon_pose.position.z);
+		        	}
+				} else {
+					// If listening to actions and target state available
+		            if (this->success_set_new_state && this->success_get_new_state && this->play==1 && this->reset==0 && this->micrortps_connected) {
+		            	this->success_set_new_state = false;
+						// Set new state
+						this->move_target();
+					}
 				}
             };
 
@@ -108,16 +122,16 @@ class EnvNode : public rclcpp::Node {
 		            // Arm the vehicle
 		            this->arm();
 		            
-		            // Get targetstate
-		            this->GetState("irlock_beacon");
-		            // If trajectory is circular initialize radius and angular velocity and position on circle
-					if(this->success_get_new_state && this->trajectory.compare("circular")==0) {
-						double theta = 2 * M_PI * (double)rand() / RAND_MAX;
-						this->r = 1.0+ static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(3.0-1.0)));  // Minimum and maximum radius
-						this->success_set_new_state = false;
-						this->ir_beacon_pose.position.x = this->r * cos(theta);
-						this->ir_beacon_pose.position.y = this->r * sin(theta);
-						this->move_target_pos();  // Must be called after the new position has been set in this->ir_beacon_pose
+		            if(!(this->trajectory.compare("still")==0)){  // If not still target
+				        // Get targetstate
+				        this->GetState("irlock_beacon");
+				        // If trajectory is circular initialize radius and angular velocity and position on circle
+						if(this->success_get_new_state && this->trajectory.compare("circular")==0) {
+							double theta = 2 * M_PI * (double)rand() / RAND_MAX;
+							this->r = 1.0+ static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(3.0-1.0)));  // Minimum and maximum radius
+							this->success_set_new_state = false;
+							this->move_target_pos(this->r * cos(theta), this->r * sin(theta), this->ir_beacon_pose.position.z);
+						}
 					}
 		            usleep(1000000);
                 }
@@ -171,6 +185,7 @@ class EnvNode : public rclcpp::Node {
         float eps_vel = 0.05;  // Tolerance for velocity, used in takeoff
         float vx, vy, vz = 0.0;
         float target_vx, target_vy, target_w;
+        float new_target_wx, new_target_wy = 0.0;
         float max_vel_target;
         float w_vx, w_vy, w_vz = 0.0;
         float x, y, z, r = 0.0;
@@ -205,7 +220,8 @@ class EnvNode : public rclcpp::Node {
         void SetState(const std::string & _entity, const geometry_msgs::msg::Pose & _pose, 
         			  const geometry_msgs::msg::Vector3 & _lin_vel, const geometry_msgs::msg::Vector3 & _ang_vel);
         void reset_target();
-        void move_target_pos();
+        void move_target();
+        void move_target_pos(double new_x, double new_y, double new_z);
         void reset_target_velocity();
         void check_pos_target();
         void update_circular_angle();
@@ -436,7 +452,23 @@ void EnvNode::SetState(const std::string & _entity,
 }
 
 // Set new position for target using a service, sets the velocity to zero
-void EnvNode::move_target_pos() {
+void EnvNode::move_target_pos(double new_x, double new_y, double new_z) {
+	geometry_msgs::msg::Point p = geometry_msgs::msg::Point();
+	geometry_msgs::msg::Pose pose = geometry_msgs::msg::Pose();
+	geometry_msgs::msg::Vector3 lin_vel = geometry_msgs::msg::Vector3();
+	geometry_msgs::msg::Vector3 ang_vel = geometry_msgs::msg::Vector3();
+	lin_vel = this->ir_beacon_twist.linear;
+	ang_vel = this->ir_beacon_twist.angular;
+	
+	p.x = new_x;
+	p.y = new_y;
+	p.z = new_z;
+	
+	pose.position = p; pose.orientation = this->ir_beacon_pose.orientation;
+	this->SetState("irlock_beacon", pose, lin_vel, ang_vel);
+}
+
+void EnvNode::move_target() {
 	geometry_msgs::msg::Point p = geometry_msgs::msg::Point();
 	geometry_msgs::msg::Pose pose = geometry_msgs::msg::Pose();
 	geometry_msgs::msg::Vector3 lin_vel = geometry_msgs::msg::Vector3();
@@ -446,54 +478,52 @@ void EnvNode::move_target_pos() {
 	
 	this->check_pos_target();  // If target is near border make it go backwards
 	
-	if(this->trajectory.compare("linear")==0){
-		x = this->ir_beacon_pose.position.x + this->target_vx* this->target_period/1000;
-		y = this->ir_beacon_pose.position.y + this->target_vy* this->target_period/1000;
-		z = this->ir_beacon_pose.position.z;
+	if(this->trajectory.compare("linear")==0 || this->trajectory.compare("still")==0){
+		p.x = this->ir_beacon_pose.position.x + this->target_vx* this->target_period/1000;
+		p.y = this->ir_beacon_pose.position.y + this->target_vy* this->target_period/1000;
+		p.z = this->ir_beacon_pose.position.z;
 	} else if(this->trajectory.compare("circular")==0){
 	    // Using only of velocity as module
-		x = this->r * cos(this->circular_angle);
-		y = this->r * sin(this->circular_angle);
-		z = this->ir_beacon_pose.position.z;
+		p.x = this->r * cos(this->circular_angle);
+		p.y = this->r * sin(this->circular_angle);
+		p.z = this->ir_beacon_pose.position.z;
 		this->update_circular_angle();
 	}
-	p.x = x; p.y = y; p.z = z;
+	
 	pose.position = p; pose.orientation = this->ir_beacon_pose.orientation;
 	this->SetState("irlock_beacon", pose, lin_vel, ang_vel);
 }
 
 void EnvNode::reset_target(){
 	// Resetting target velocity
-	float sign, w_x, w_y;
-    this->reset_target_velocity();  // Needs to be called before "move_target_pos"
-    this->circular_angle = 0.0;  // Reset angle, position in circle
+	float sign, target_wx, target_wy;
+	if(!(this->trajectory.compare("still")==0)){  // If not still target
+		this->reset_target_velocity();  // Needs to be called before "move_target_pos"
+		this->circular_angle = 0.0;  // Reset angle, position in circle
+    }
     
     // Sample random position for target
-    if(this->trajectory.compare("linear")==0){
+    if(this->trajectory.compare("linear")==0 || this->trajectory.compare("still")==0){
 		sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		if(sign >= 0.5){
-		    w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side/2-0.0)));
-		} else {
-		    w_x = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side/2-0.0)));
-		    w_x = -this->w_x;
+		target_wx = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side/2-0.0)));
+		if(sign < 0.5){
+		    target_wx = -target_wx;
 		}
 		sign = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
-		if(sign >= 0.5){
-		    w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side/2-0.0)));
-		} else {
-		    w_y = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side/2-0.0)));
-		    w_y = -this->w_y;
+		target_wy = 0.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(this->max_side/2-0.0)));
+		if(sign < 0.5){
+		    target_wy = -target_wy;
 		}
     } else if (this->trajectory.compare("circular")==0){
     	double theta = 2 * M_PI * (double)rand() / RAND_MAX;
     	this->r = 1.0 + static_cast <float> (rand()) /( static_cast <float> (RAND_MAX/(3.0-1.0)));  // Minimum and maximum radius
-		w_x = this->r * cos(theta);
-		w_y = this->r * sin(theta);
+		target_wx = this->r * cos(theta);
+		target_wy = this->r * sin(theta);
     }
     // Use service to set new position
-    this->ir_beacon_pose.position.x = w_x;
-    this->ir_beacon_pose.position.y = w_y;
-    this->move_target_pos();  // Must be called after the new position has been set in this->ir_beacon_pose
+    this->new_target_wx = target_wx;
+    this->new_target_wy = target_wy;
+    this->move_target_pos(target_wx, target_wy, this->ir_beacon_pose.position.z);
 }
 
 void EnvNode::reset_target_velocity(){

@@ -16,7 +16,7 @@ max_vel_xy: 1.0  # Max velocity of agent in x and y axis
 max_vel_z: 1.0  # Max velocity of agent in z-axis
 max_vel_target: 0.8  # Max velocity of target
 min_vel_target: 0.4  # Min velocity of target
-trajectory: "linear"  # Target movements: "linear" or "circular"
+trajectory: "still"  # Target movements: "linear" or "circular" or "still"
 train_window_reward: 100
 test_window_reward: 3
 evaluate_freq: 500
