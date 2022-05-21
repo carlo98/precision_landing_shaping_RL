@@ -76,3 +76,5 @@ class Memory:
         else:
             self.acc_rewards_train.append(acc_r)
 
+    def get_id_file(self):
+        return self.id_file

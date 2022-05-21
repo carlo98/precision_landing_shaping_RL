@@ -12,7 +12,7 @@ log_interval_episodes: 100
 max_height: 3.5  # Max height of cube in which the agent can move
 min_height: 1.8  # Min height at which the agent can spawn
 max_side: 5.0  # Side of square in which the agent can move
-max_vel_xy: 1.0  # Max velocity of agent in x and y axis
+max_vel_xy: 1.0  # Max velocity of agent in x and y-axis
 max_vel_z: 1.0  # Max velocity of agent in z-axis
 max_vel_target: 0.8  # Max velocity of target
 min_vel_target: 0.4  # Min velocity of target
@@ -24,6 +24,7 @@ evaluate_ep: 9  # Keep this a multiple of test_window_reward
 eval_noise: 0.2  # std for gaussian evaluation noise
 model: "small"  # "paper" or "small" or "small_one_head"
 eps_pos_xy: 0.3  # Target dimension
+use_mc: "False"  # Whether to use Monte Carlo
 
 # DDPG
 epochs: 1
@@ -32,3 +33,9 @@ gamma: 0.99
 tau: 0.001
 lr_actor: 0.0001
 lr_critic: 0.001
+
+# Monte Carlo
+start_height: 100  # Height at which to start using Monte Carlo generated actions (centimeters)
+steps_dist: 5  # Distance between each step of Monte Carlo (centimeters)
+num_samples: 100  # Number of samples for each sample
+scale: 0.1  # Standard Deviation for each action
