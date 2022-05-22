@@ -55,6 +55,7 @@ class AgentNode:
         episode_steps = 0
         cont_steps = 0
         best_eval_reward = 0.0
+        mc_step_id = 0
 
         while self.env.reset:  # Waiting for env to stop resetting
             pass
@@ -67,9 +68,8 @@ class AgentNode:
                                                0 < cont_test < self.info_dict['evaluate_ep'])
 
             episode_steps += 1
-
             if self.info_dict["use_mc"] == "False" or \
-                    (self.info_dict["use_mc"] == "True" and inputs[2] <= self.info_dict['start_height']):
+                    (self.info_dict["use_mc"] == "True" and inputs[2] > self.info_dict['start_height']):
                 with torch.no_grad():
                     if evaluating:  # Evaluate model
                         # During evaluation adding noise to the state
@@ -79,13 +79,15 @@ class AgentNode:
                     else:
                         normalized_input = self.normalize_input(np.copy(inputs))
                         action = self.ddpg.get_exploration_action(normalized_input, cont_steps)[0]
-            elif self.info_dict["use_mc"] == "True" and \
-                    self.info_dict['start_height']-self.info_dict['steps_dist'] <= inputs[2] <= self.info_dict['start_height']:
-                normalized_input = self.normalize_input(np.copy(inputs))
-                action = self.mc.sample()
-            # TODO: Cover steps between start_height and 0
-            else:
-                normalized_input = self.normalize_input(np.copy(inputs))
+            elif self.info_dict["use_mc"] == "True" and inputs[2] <= self.info_dict['start_height']:
+                lower_bound = self.info_dict['start_height'] - (mc_step_id+1)*self.info_dict['steps_dist']
+                upper_bound = self.info_dict['start_height'] - mc_step_id*self.info_dict['steps_dist']
+                if not (lower_bound <= inputs[2] <= upper_bound):
+                    mc_step_id += 1
+                    normalized_input = self.normalize_input(np.copy(inputs))
+                    model_action = self.ddpg.get_exploitation_action(normalized_input)[0]
+                    self.mc.generate_samples(model_action)
+
                 action = self.mc.sample()
 
             inputs, reward, done = self.env.act(action, self.normalize_input)
