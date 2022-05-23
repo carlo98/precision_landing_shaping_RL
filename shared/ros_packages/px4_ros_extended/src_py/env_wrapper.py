@@ -25,6 +25,9 @@ class EnvWrapperNode:
         self.play_reset_publisher = self.node.create_publisher(Float32MultiArray, "/env/play_reset/in", 1)
         self.play_reset_subscriber = self.node.create_subscription(Float32MultiArray, "/env/play_reset/out",
                                                                    self.play_reset_callback, 1)
+        self.move_agent_publisher = self.node.create_publisher(Float32MultiArray, "/env/move_agent/in", 1)
+        self.move_agent_subscriber = self.node.create_subscription(Int64, "/env/move_agent/out",
+                                                                   self.move_agent_callback, 1)
         self.agent_action_received_subscriber = self.node.create_subscription(Int64, "/agent/action_received",
                                                                               self.action_received_callback, 1)
         self.gazebo_down_publisher = self.node.create_publisher(Int64, "/env/gazebo_down", 1)
@@ -41,6 +44,7 @@ class EnvWrapperNode:
         self.landed_received = False
         self.reset = True
         self.play = False
+        self.reset_move_agent = False
 
         self.eps_pos_xy = eps_pos_xy
         self.eps_vel_xy = 0.05
@@ -71,11 +75,9 @@ class EnvWrapperNode:
             self.ir_beacon_state[0] = msg.pose[beacon_id].position.y
             self.ir_beacon_state[1] = msg.pose[beacon_id].position.x
             self.ir_beacon_state[2] = -1.0*msg.pose[beacon_id].position.z
-            # self.ir_beacon_orientation = msg.pose[beacon_id].orientation
             self.ir_beacon_state[3] = msg.twist[beacon_id].linear.y
             self.ir_beacon_state[4] = msg.twist[beacon_id].linear.x
             self.ir_beacon_state[5] = -1.0*msg.twist[beacon_id].linear.z
-            # self.ir_beacon_twist_angular = msg.twist[beacon_id].angular
 
     def act(self, action, normalize):
     
@@ -141,6 +143,18 @@ class EnvWrapperNode:
     def play_reset_callback(self, msg):  # Used for synchronization with gazebo
         if msg.data[1] == 0:
             self.reset = False
+
+    def move_agent(self, x, y, z):
+        move_agent_msg = Float32MultiArray()
+        move_agent_msg.data = [x, y, z]
+        self.move_agent_publisher.publish(move_agent_msg)
+        while not self.reset_move_agent:  # Waiting for env to confirm that the agent is in the given position
+            pass
+        self.reset_move_agent = False
+
+    def move_agent_callback(self, msg):  # Used for synchronization with gazebo, when moving the agent
+        if msg.data[0] == 1:
+            self.reset_move_agent = True
             
     def get_agent_position(self):
         return self.state_world[0], self.state_world[1], self.state_world[2]

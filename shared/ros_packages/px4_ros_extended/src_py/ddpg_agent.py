@@ -80,7 +80,6 @@ class AgentNode:
                         normalized_input = self.normalize_input(np.copy(inputs))
                         action = self.ddpg.get_exploration_action(normalized_input, cont_steps)[0]
             elif self.info_dict["use_mc"] == "True" and inputs[2] <= self.mc.get_start_height():
-                print(inputs[2])
                 lower_bound = self.mc.get_start_height() - (mc_step_id+1)*self.mc.get_steps_dist()
                 upper_bound = self.mc.get_start_height() - mc_step_id*self.mc.get_steps_dist()
                 if not (lower_bound <= inputs[2] <= upper_bound):
@@ -96,11 +95,16 @@ class AgentNode:
             previous_obs = np.copy(normalized_input)
             normalized_input = self.normalize_input(np.copy(inputs))
 
-            if episode_steps > 1:
+            # Saving episode in memory if not using Monte Carlo
+            if episode_steps > 1 and \
+                    not (self.info_dict["use_mc"] == "True" and inputs[2] <= self.mc.get_start_height()):
                 episode_tot_reward += reward
                 self.memory.add(previous_obs, action, reward, normalized_input, episode_num)
+            elif episode_steps > 1 and self.info_dict["use_mc"] == "True" and inputs[2] <= self.mc.get_start_height():
+                pass  # TODO: Monte Carlo rewards in memory
 
             if (cont_steps % self.info_dict['num-steps'] == 0 and cont_steps > 0 and episode_steps > 1) or done:
+                # TODO: reset position of agent for Monte Carlo
                 if done:
                     print("Done " + str(episode_num))
                 else:
