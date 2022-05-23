@@ -24,7 +24,7 @@ evaluate_ep: 9  # Keep this a multiple of test_window_reward
 eval_noise: 0.2  # std for gaussian evaluation noise
 model: "small"  # "paper" or "small" or "small_one_head"
 eps_pos_xy: 0.3  # Target dimension
-use_mc: "False"  # Whether to use Monte Carlo
+use_mc: "True"  # Whether to use Monte Carlo
 
 # DDPG
 epochs: 1
@@ -37,5 +37,5 @@ lr_critic: 0.001
 # Monte Carlo
 start_height: 100  # Height at which to start using Monte Carlo generated actions (centimeters)
 steps_dist: 5  # Distance between each step of Monte Carlo (centimeters)
-num_samples: 100  # Number of samples for each sample
+num_samples: 100  # Number of samples for each step
 scale: 0.1  # Standard Deviation for each action

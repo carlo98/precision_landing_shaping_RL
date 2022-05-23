@@ -60,6 +60,18 @@ class MonteCarlo:
         self.curr_samples = 0
         self.action_log = np.zeros((self.steps, self.num_samples, self.action_dim))
         self.episodes += 1
+        
+    def get_start_height(self):
+        """
+        Returns start height in metres
+        """
+        return self.start_height / 100
+        
+    def get_steps_dist(self):
+        """
+        Returns steps distance in metres
+        """
+        return self.steps_dist / 100
 
     def _log(self):
         filename = '/log_' + str(self.id_file) + "_" + str(self.episodes) + ".pkl"

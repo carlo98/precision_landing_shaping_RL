@@ -35,13 +35,13 @@ class AgentNode:
         self.env = EnvWrapperNode(node, self.info_dict['obs_shape'], self.info_dict['action_space'],
                                   self.info_dict['max_height'], self.info_dict['max_side'], self.info_dict['max_vel_z'],
                                   self.info_dict['max_vel_xy'], self.info_dict['eps_pos_xy'])
-        id_file = self.memory = Memory(self.info_dict['max_memory_len'])
+        self.memory = Memory(self.info_dict['max_memory_len'])
         self.ddpg = DDPG(self.info_dict['obs_shape'], self.info_dict['action_space'], self.memory,
                          self.info_dict['model'], lr_actor=self.info_dict['lr_actor'],
                          lr_critic=self.info_dict['lr_critic'], gamma=self.info_dict['gamma'],
                          tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'],
                          epochs=self.info_dict['epochs'])
-        self.mc = MonteCarlo(id_file, "/src/shared/mc_logs", self.info_dict['action_space'],
+        self.mc = MonteCarlo(self.memory.get_id_file(), "/src/shared/mc_logs", self.info_dict['action_space'],
                              start_height=self.info_dict['start_height'], steps_dist=self.info_dict['steps_dist'],
                              num_samples=self.info_dict['num_samples'], scale=self.info_dict['scale'])
 
@@ -69,7 +69,7 @@ class AgentNode:
 
             episode_steps += 1
             if self.info_dict["use_mc"] == "False" or \
-                    (self.info_dict["use_mc"] == "True" and inputs[2] > self.info_dict['start_height']):
+                    (self.info_dict["use_mc"] == "True" and inputs[2] > self.mc.get_start_height()):
                 with torch.no_grad():
                     if evaluating:  # Evaluate model
                         # During evaluation adding noise to the state
@@ -79,9 +79,10 @@ class AgentNode:
                     else:
                         normalized_input = self.normalize_input(np.copy(inputs))
                         action = self.ddpg.get_exploration_action(normalized_input, cont_steps)[0]
-            elif self.info_dict["use_mc"] == "True" and inputs[2] <= self.info_dict['start_height']:
-                lower_bound = self.info_dict['start_height'] - (mc_step_id+1)*self.info_dict['steps_dist']
-                upper_bound = self.info_dict['start_height'] - mc_step_id*self.info_dict['steps_dist']
+            elif self.info_dict["use_mc"] == "True" and inputs[2] <= self.mc.get_start_height():
+                print(inputs[2])
+                lower_bound = self.mc.get_start_height() - (mc_step_id+1)*self.mc.get_steps_dist()
+                upper_bound = self.mc.get_start_height() - mc_step_id*self.mc.get_steps_dist()
                 if not (lower_bound <= inputs[2] <= upper_bound):
                     mc_step_id += 1
                     normalized_input = self.normalize_input(np.copy(inputs))
@@ -114,7 +115,7 @@ class AgentNode:
                         # Saving best model based on mean evaluation reward of group
                         if mean_reward_eval > best_eval_reward:
                             print("Saving best model.")
-                            self.ddpg.save_models(self.memory.id_file, best=True)
+                            self.ddpg.save_models(self.memory.get_id_file(), best=True)
                             best_eval_reward = mean_reward_eval
 
                 print("Position x: " + str(-inputs[0]) + " y: " + str(-inputs[1]) + " z: " + str(-inputs[2]))
@@ -132,11 +133,13 @@ class AgentNode:
                     print("Saving rewards in file.")
                     self.memory.log()
                     print("Saving model.")
-                    self.ddpg.save_models(self.memory.id_file, best=False)
+                    self.ddpg.save_models(self.memory.get_id_file(), best=False)
 
                 episode_tot_reward = 0.0
                 episode_num += 1
                 episode_steps = 0
+                if self.info_dict["use_mc"] == "True":
+                    self.mc.reset()  # Resetting Monte Carlo
 
                 inputs = self.env.play_env()  # Restart landing listening, after training
                 print("\nNew episode started\n")
@@ -147,7 +150,7 @@ class AgentNode:
         print("Saving rewards in file.")
         self.memory.log()
         print("Saving model...\nTotal time: ", time.time()-self.start_time)
-        self.ddpg.save_models(self.memory.id_file)
+        self.ddpg.save_models(self.memory.get_id_file())
 
         self.env.shutdown_gazebo()
 
