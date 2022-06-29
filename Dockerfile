@@ -48,7 +48,7 @@ RUN pip3 install --upgrade \
 		pytest-repeat \
 		pytest-rerunfailures
 		
-RUN pip3 install torch pandas
+RUN pip3 install torch pandas scipy
 
 # bootstrap rosdep
 RUN rosdep update

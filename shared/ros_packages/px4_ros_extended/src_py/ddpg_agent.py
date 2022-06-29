@@ -42,7 +42,8 @@ class AgentNode:
                          tau=self.info_dict['tau'], batch_size=self.info_dict['batch_size'],
                          epochs=self.info_dict['epochs'])
         self.mc = MonteCarlo(self.memory.get_id_file(), "/src/shared/mc_logs", self.info_dict['action_space'],
-                             start_height=self.info_dict['start_height'], steps_dist=self.info_dict['steps_dist'],
+                             start_height=self.info_dict['start_height'],
+                             simulation_steps=self.info_dict['simulation_steps'],
                              num_samples=self.info_dict['num_samples'], scale=self.info_dict['scale'])
 
         self.eval_noise = self.info_dict['eval_noise']
@@ -55,7 +56,6 @@ class AgentNode:
         episode_steps = 0
         cont_steps = 0
         best_eval_reward = 0.0
-        mc_step_id = 0
 
         while self.env.reset:  # Waiting for env to stop resetting
             pass
@@ -68,6 +68,7 @@ class AgentNode:
                                                0 < cont_test < self.info_dict['evaluate_ep'])
 
             episode_steps += 1
+            done = False
             if self.info_dict["use_mc"] == "False" or \
                     (self.info_dict["use_mc"] == "True" and inputs[2] > self.mc.get_start_height()):
                 with torch.no_grad():
@@ -80,31 +81,35 @@ class AgentNode:
                         normalized_input = self.normalize_input(np.copy(inputs))
                         action = self.ddpg.get_exploration_action(normalized_input, cont_steps)[0]
             elif self.info_dict["use_mc"] == "True" and inputs[2] <= self.mc.get_start_height():
-                lower_bound = self.mc.get_start_height() - (mc_step_id+1)*self.mc.get_steps_dist()
-                upper_bound = self.mc.get_start_height() - mc_step_id*self.mc.get_steps_dist()
-                if not (lower_bound <= inputs[2] <= upper_bound):
-                    mc_step_id += 1
-                    normalized_input = self.normalize_input(np.copy(inputs))
-                    model_action = self.ddpg.get_exploitation_action(normalized_input)[0]
-                    self.mc.generate_samples(model_action)
-
-                action = self.mc.sample()
-
-            inputs, reward, done = self.env.act(action, self.normalize_input)
-
-            previous_obs = np.copy(normalized_input)
-            normalized_input = self.normalize_input(np.copy(inputs))
+                normalized_input = self.normalize_input(np.copy(inputs))
+                time_s = time.time()
+                end_poses = self.mc.generate_samples(inputs)
+                new_reward = []
+                for state in end_poses:
+                    reward, tmp_done = self.env.get_reward(state,  self.normalize_input)
+                    new_reward.append(reward)
+                    if tmp_done:
+                        done = True
+                reward = np.mean(new_reward)
+                time_e = time.time()
+                print("Time required: ", time_e-time_s)
+                print(reward)
+                episode_tot_reward += reward
+                self.memory.add(normalized_input, inputs[3:], reward, normalized_input, episode_num)
 
             # Saving episode in memory if not using Monte Carlo
-            if episode_steps > 1 and \
-                    not (self.info_dict["use_mc"] == "True" and inputs[2] <= self.mc.get_start_height()):
+            if episode_steps > 1 and not (self.info_dict["use_mc"] == "True" and
+                                          inputs[2] <= self.mc.get_start_height()):
+
+                inputs, reward, done = self.env.act(action, self.normalize_input)
+
+                previous_obs = np.copy(normalized_input)
+                normalized_input = self.normalize_input(np.copy(inputs))
+
                 episode_tot_reward += reward
                 self.memory.add(previous_obs, action, reward, normalized_input, episode_num)
-            elif episode_steps > 1 and self.info_dict["use_mc"] == "True" and inputs[2] <= self.mc.get_start_height():
-                pass  # TODO: Monte Carlo rewards in memory
 
             if (cont_steps % self.info_dict['num-steps'] == 0 and cont_steps > 0 and episode_steps > 1) or done:
-                # TODO: reset position of agent for Monte Carlo
                 if done:
                     print("Done " + str(episode_num))
                 else:
@@ -161,7 +166,8 @@ class AgentNode:
     def normalize_input(self, inputs):
         inputs[:2] /= self.info_dict['max_side']
         inputs[2] /= self.info_dict['max_height']
-        inputs[3:] /= self.info_dict['max_vel_xy']
+        if len(inputs) > 3:  # TODO: Remove when adding velocities in Monte Carlo
+            inputs[3:] /= self.info_dict['max_vel_xy']
         return inputs
 
 

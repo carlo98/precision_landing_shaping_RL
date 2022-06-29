@@ -109,6 +109,17 @@ class EnvWrapperNode:
         self.action_received = False
         return new_state, reward, done
 
+    def get_reward(self, obs, normalize):
+        norm_obs = normalize(np.array(obs))
+        if norm_obs[2] > 0.0:
+            reward = np.sqrt(norm_obs[0] ** 2 + norm_obs[1] ** 2 + norm_obs[2] ** 2)
+        else:
+            reward = np.sqrt(norm_obs[0] ** 2 + norm_obs[1] ** 2)
+        done = False
+        if self.landed:
+            done = True
+        return reward, done
+
     def action_received_callback(self, msg):
         self.action_received = msg.data == 1
 
@@ -129,7 +140,7 @@ class EnvWrapperNode:
     def play_env(self):  # Used for synchronization with gazebo
         play_reset_msg = Float32MultiArray()
         play_reset_msg.data = [1.0, 0.0]
-        # self.reward.init_shaping(self.ir_beacon_state - self.state_world)  # Initialising shaping for reward
+        # self.reward.init_shaping(self.ir_beacon_state - selfpass
         self.play_reset_publisher.publish(play_reset_msg)
         self.play = True
 

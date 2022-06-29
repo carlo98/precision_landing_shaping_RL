@@ -36,6 +36,6 @@ lr_critic: 0.001
 
 # Monte Carlo
 start_height: 100  # Height at which to start using Monte Carlo generated actions (centimeters)
-steps_dist: 5  # Distance between each step of Monte Carlo (centimeters)
+simulation_steps: 500
 num_samples: 100  # Number of samples for each step
 scale: 0.1  # Standard Deviation for each action

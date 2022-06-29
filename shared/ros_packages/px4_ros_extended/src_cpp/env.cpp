@@ -79,8 +79,6 @@ class EnvNode : public rclcpp::Node {
             agent_subscriber = this->create_subscription<Float32MultiArray>("/agent/velocity", 1, std::bind(&EnvNode::agent_callback, this, _1));
             play_reset_subscriber = this->create_subscription<Float32MultiArray>("/env/play_reset/in", 1, std::bind(&EnvNode::play_reset_callback, this, _1));
             play_reset_publisher = this->create_publisher<Float32MultiArray>("/env/play_reset/out", 1);
-            move_agent_subscriber = this->create_subscription<Float32MultiArray>("/env/move_agent/in", 1, std::bind(&EnvNode::move_agent_callback, this, _1));
-            move_agent_publisher = this->create_publisher<Int64>("/env/move_agent/out", 1);
             agent_odom_publisher = this->create_publisher<Float32MultiArray>("/agent/odom", 1);
             resetting_subscriber = this->create_subscription<Int64>("/env/resetting", 1, std::bind(&EnvNode::resetting_callback, this, _1));
             get_state_client_ = this->create_client<gazebo_msgs::srv::GetEntityState>("/gazebo/get_entity_state");
@@ -173,7 +171,6 @@ class EnvNode : public rclcpp::Node {
         rclcpp::Publisher<TrajectorySetpoint>::SharedPtr trajectory_setpoint_publisher_;
         rclcpp::Publisher<Float32MultiArray>::SharedPtr play_reset_publisher;
         rclcpp::Subscription<Float32MultiArray>::SharedPtr play_reset_subscriber;
-        rclcpp::Subscription<Float32MultiArray>::SharedPtr move_agent_subscriber;
         rclcpp::Publisher<Float32MultiArray>::SharedPtr agent_odom_publisher;
         rclcpp::Subscription<Int64>::SharedPtr resetting_subscriber;
         std::shared_ptr<rclcpp::Client<gazebo_msgs::srv::GetEntityState>> get_state_client_;
@@ -213,7 +210,6 @@ class EnvNode : public rclcpp::Node {
         void takeoff(float x, float y, float z) const;
         void agent_callback(const Float32MultiArray::SharedPtr msg_float);
         void play_reset_callback(const Float32MultiArray::SharedPtr msg_float);
-        void move_agent_callback(const Float32MultiArray::SharedPtr msg_float);
         void odometry_callback(const VehicleOdometry::SharedPtr msg);
         void resetting_callback(const Int64::SharedPtr msg);
         void status_callback(const VehicleStatus::SharedPtr msg);
@@ -226,7 +222,6 @@ class EnvNode : public rclcpp::Node {
         void reset_target();
         void move_target();
         void move_target_pos(double new_x, double new_y, double new_z);
-        void move_agent_pos(double new_x, double new_y, double new_z);
         void reset_target_velocity();
         void check_pos_target();
         void update_circular_angle();
@@ -287,22 +282,6 @@ void EnvNode::play_reset_callback(const Float32MultiArray::SharedPtr msg_float)
         this->w_vz = 0.0;
         this->new_position();
     }
-}
-
-// Receive new position for agent
-void EnvNode::move_agent_callback(const Float32MultiArray::SharedPtr msg_float)
-{
-    new_agent_x = msg_float->data[0];
-    new_agent_y = msg_float->data[1];
-    new_agent_z = msg_float->data[2];
-
-    do {
-    this->move_agent_pos(new_agent_x, new_agent_y, new_agent_z);
-    } while (!this->success_set_new_state);
-
-    Int64 move_agent_msg = Int64();
-    move_agent_msg.data = 1;
-    this->move_agent_publisher.publish(move_agent_msg);
 }
 
 void EnvNode::resetting_callback(const Int64::SharedPtr msg)
@@ -594,23 +573,6 @@ void EnvNode::update_circular_angle(){
 	} else if(this->circular_angle<=-2*M_PI){
 		this->circular_angle += 2*M_PI;
 	}
-}
-
-// Set new position for agent using a service, sets the velocity to zero
-void EnvNode::move_agent_pos(double new_x, double new_y, double new_z) {
-	geometry_msgs::msg::Point p = geometry_msgs::msg::Point();
-	geometry_msgs::msg::Pose pose = geometry_msgs::msg::Pose();
-	geometry_msgs::msg::Vector3 lin_vel = geometry_msgs::msg::Vector3();
-	geometry_msgs::msg::Vector3 ang_vel = geometry_msgs::msg::Vector3();
-	lin_vel = this->ir_beacon_twist.linear;
-	ang_vel = this->ir_beacon_twist.angular;
-
-	p.x = new_x;
-	p.y = new_y;
-	p.z = new_z;
-
-	pose.position = p; pose.orientation = this->ir_beacon_pose.orientation;
-	this->SetState("iris", pose, lin_vel, ang_vel);
 }
 
 int main(int argc, char* argv[])
