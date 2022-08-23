@@ -43,7 +43,7 @@ class AgentNode:
                          epochs=self.info_dict['epochs'])
         self.mc = MonteCarlo(self.memory.get_id_file(), "/src/shared/mc_logs", self.info_dict['action_space'],
                              start_height=self.info_dict['start_height'],
-                             simulation_steps=self.info_dict['simulation_steps'],
+                             simulation_runs=self.info_dict['simulation_runs'],
                              num_samples=self.info_dict['num_samples'], scale=self.info_dict['scale'])
 
         self.eval_noise = self.info_dict['eval_noise']
