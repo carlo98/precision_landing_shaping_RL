@@ -23,11 +23,11 @@ Modify the absolute paths in "run_docker.sh" to reflect the position of the repo
 Build and start the docker, it will take same time, from the root of the repository run:
 - For ROS2 Dashing:
    ```
-   sudo ./run_docker.sh build
+   sudo ./run_docker.sh build  # if an error occurs, delete the docker and run again this command without "sudo"
    ```
 - For ROS2 Foxy:
    ```
-   sudo ./run_docker.sh build_foxy
+   sudo ./run_docker.sh build_foxy  # if an error occurs, delete the docker and run again this command without "sudo"
    ```
 
 Don't worry if this message appears "bash: /src/shared/ros_packages/install/setup.bash: No such file or directory", 
