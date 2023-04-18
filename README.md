@@ -12,8 +12,9 @@ Project developed, starting from a problem of [DRAFT PoliTO](https://www.draftpo
    2. [Test](#test)
    3. [Code changes](#changes)
    4. [Speed-up](#speed)
-3. [Acknowledgments](#acknowledgments)
-4. [References](#references)
+3. [Torch to ONNX](#torch2onnx)
+4. [Acknowledgments](#acknowledgments)
+5. [References](#references)
 
 ## Setup <a name="setup"></a>
 Install [Docker](https://docs.docker.com/engine/install/).
@@ -139,7 +140,7 @@ In order to avoid following the drone
 PX4_NO_FOLLOW_MODE=1 make px4_sitl_rtps gazebo
 ```
 
-## Torch to ONNX
+## Torch to ONNX <a name="torch2onnx"></a>
 The notebook "shared/torch_to_onnx.ipynb" shows how to export the actor NN from a torch model to a onnx model to be used in edge-devices. You will have to import the right model, select the number of state and action dimensions, the model path and the name and path of the onnx model.
 
 ## Acknowledgments <a name="acknowledgments"></a>
