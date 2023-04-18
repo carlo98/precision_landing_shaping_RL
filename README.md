@@ -139,6 +139,9 @@ In order to avoid following the drone
 PX4_NO_FOLLOW_MODE=1 make px4_sitl_rtps gazebo
 ```
 
+## Torch to ONNX
+The notebook "shared/torch_to_onnx.ipynb" shows how to export the actor NN from a torch model to a onnx model to be used in edge-devices. You will have to import the right model, select the number of state and action dimensions, the model path and the name and path of the onnx model.
+
 ## Acknowledgments <a name="acknowledgments"></a>
 The author(s) would like to acknowledge the contribution of the student team DRAFT PoliTO of the Politecnico di Torino, for supporting the research activity by providing technical advising and experimental equipment that helped the work with the simulator.
 
