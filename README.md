@@ -52,11 +52,11 @@ source install/setup.bash
 To start the docker run:
 - For ROS2 Dashing:
    ```
-   sudo ./run_docker.sh run
+   ./run_docker.sh run
    ```
 - For ROS2 Foxy:
    ```
-   sudo ./run_docker.sh run_foxy
+   ./run_docker.sh run_foxy
    ```
 
 ### Train <a name="train"></a>
