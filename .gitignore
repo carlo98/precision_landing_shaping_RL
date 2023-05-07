@@ -9,3 +9,4 @@ logs
 test_logs
 models
 .ipynb_checkpoints
+.vscode
