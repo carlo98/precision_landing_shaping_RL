@@ -21,14 +21,21 @@ Install [Docker](https://docs.docker.com/engine/install/).
 
 Modify the absolute paths in "run_docker.sh" to reflect the position of the repository on your computer.
 
+Add your user to the "docker" group
+```
+sudo groupadd docker
+sudo gpasswd -a $USER docker
+newgrp docker  # Or log out/in
+```
+
 Build and start the docker, it will take same time, from the root of the repository run:
 - For ROS2 Dashing:
    ```
-   sudo ./run_docker.sh build  # if an error occurs, delete the docker and run again this command without "sudo"
+   ./run_docker.sh build  # if an error occurs, delete the docker and run again this command with "sudo"
    ```
 - For ROS2 Foxy:
    ```
-   sudo ./run_docker.sh build_foxy  # if an error occurs, delete the docker and run again this command without "sudo"
+   ./run_docker.sh build_foxy  # if an error occurs, delete the docker and run again this command with "sudo"
    ```
 
 Don't worry if this message appears "bash: /src/shared/ros_packages/install/setup.bash: No such file or directory", 
