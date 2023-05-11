@@ -16,8 +16,8 @@ def generate_launch_description():
 
     flight_plan_node = Node(
         package = 'px4_ros_extended', 
-        node_executable = 'env',
-        node_name = 'env_node',
+        executable = 'env',
+        name = 'env_node',
         output = {
             'stdout': 'screen',
             'stderr': 'screen',
