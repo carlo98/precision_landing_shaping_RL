@@ -23,7 +23,7 @@ def generate_launch_description():
             'stderr': 'screen',
         },
         parameters = param,
-        arguments = ['__log_level:=info', "-p /use_sim_time:=true"],
+        arguments = ['__log_level:=info', "--ros-args --remap /use_sim_time:=true"],
     )
 
 
