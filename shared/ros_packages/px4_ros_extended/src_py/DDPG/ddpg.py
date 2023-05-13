@@ -3,7 +3,6 @@ import os
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch.autograd import Variable
 
 import DDPG.utils as utils
 from DDPG.models import Critic_paper, Critic_small
@@ -61,9 +60,9 @@ class DDPG:
         :param state: state (Numpy array)
         :return: sampled action (Numpy array)
         """
-        state = Variable(torch.from_numpy(state.reshape(-1, self.state_dim)).float())
+        state = torch.from_numpy(state.reshape(-1, self.state_dim)).float()
         action = self.target_actor.forward(state).detach()
-        return action.data.numpy()
+        return action.numpy()
 
     def get_exploration_action(self, state, n_steps):
         """
@@ -72,9 +71,9 @@ class DDPG:
         :param n_steps: number of training steps, used to decrease exploration
         :return: sampled action (Numpy array)
         """
-        state = Variable(torch.from_numpy(state.reshape(-1, self.state_dim)).float())
+        state = torch.from_numpy(state.reshape(-1, self.state_dim)).float()
         action = self.actor.forward(state).detach()
-        new_action = action.data.numpy() + self.noise.sample(n_steps)
+        new_action = action.numpy() + self.noise.sample(n_steps)
         return np.clip(new_action, -1.0, 1.0)
 
     def optimize(self, mem_to_use):
@@ -82,53 +81,42 @@ class DDPG:
         Samples a random batch from replay memory and performs optimization
         :return:
         """
-        s1_tot, a1_tot, r1_tot, s2_tot = self.ram.sample(mem_to_use)
         for j in range(self.epochs):
             tot_loss_critic = 0.0
             tot_loss_actor = 0.0
-            updates = int(len(s1_tot)/self.batch_size)
-            for i in range(updates):
-                s1 = np.array(s1_tot)[i*self.batch_size:i*self.batch_size+self.batch_size]
-                a1 = np.array(a1_tot)[i*self.batch_size:i*self.batch_size+self.batch_size]
-                r1 = np.array(r1_tot)[i*self.batch_size:i*self.batch_size+self.batch_size]
-                s2 = np.array(s2_tot)[i*self.batch_size:i*self.batch_size+self.batch_size]
-
-                s1 = Variable(torch.Tensor(s1))
-                a1 = Variable(torch.Tensor(a1))
-                r1 = Variable(torch.Tensor(r1))
-                s2 = Variable(torch.Tensor(s2))
-                
-                self.actor_optimizer.zero_grad()
-                self.critic_optimizer.zero_grad()
+            for s1, a1, r1, s2, done in self.ram.sample(mem_to_use, self.batch_size):
+                self.actor_optimizer.zero_grad(set_to_none=True)
+                self.critic_optimizer.zero_grad(set_to_none=True)
 
                 # ---------------------- optimize critic ----------------------
                 # Use target actor exploitation policy here for loss evaluation
-                a2 = self.target_actor.forward(s2).detach()
-                next_val = torch.squeeze(self.target_critic.forward(s2, a2).detach())
-                # y_exp = r + gamma*Q'( s2, pi'(s2))
-                y_expected = r1 + self.gamma * next_val
+                with torch.no_grad():
+                    a2 = self.target_actor(s2).detach()
+                    next_val = torch.squeeze(self.target_critic(s2, a2).detach())
+                    # y_exp = r + gamma*Q'( s2, pi'(s2))
+                    y_expected = r1 + (1-done) * self.gamma * next_val
                 # y_pred = Q( s1, a1)
-                y_predicted = torch.squeeze(self.critic.forward(s1, a1))
+                y_predicted = torch.squeeze(self.critic(s1, a1))
                 # compute critic loss, and update the critic
                 loss_critic = F.smooth_l1_loss(y_predicted, y_expected)
                 loss_critic.backward()
                 self.critic_optimizer.step()
 
                 # ---------------------- optimize actor ----------------------
-                pred_a1 = self.actor.forward(s1)
-                loss_actor = -1*torch.mean(self.critic.forward(s1, pred_a1))
+                pred_a1 = self.actor(s1)
+                loss_actor = -1*torch.mean(self.critic(s1, pred_a1))
                 loss_actor.backward()
                 self.actor_optimizer.step()
-                
 
-                tot_loss_critic += loss_critic.item()
-                tot_loss_actor += loss_actor.item()
+                tot_loss_critic += loss_critic.detach().numpy()
+                tot_loss_actor += loss_actor.detach().numpy()
 
-            print("Epoch: " + str(j) + " Loss Critic: " + str(tot_loss_critic/updates) + " Loss Actor: "
-                  + str(tot_loss_actor/updates))
+            print("Epoch: " + str(j) + " Loss Critic: " + str(tot_loss_critic) + " Loss Actor: "
+                + str(tot_loss_actor))
 
         utils.soft_update(self.target_actor, self.actor, self.tau)
         utils.soft_update(self.target_critic, self.critic, self.tau)
+
 
     def save_models(self, id, best=False):
         """

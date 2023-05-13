@@ -77,7 +77,7 @@ class AgentNode:
             
             if episode_steps > 1:
                 episode_tot_reward += reward
-                self.memory.add(previous_obs, action, reward, normalized_input, episode_num)
+                self.memory.add(previous_obs, action, reward, normalized_input, done, episode_num)
 
             if (cont_steps % self.info_dict['num-steps'] == 0 and cont_steps > 0 and episode_steps > 1) or done:
                 if done:

@@ -1,3 +1,4 @@
+import torch
 import numpy as np
 import random
 import pickle
@@ -29,21 +30,27 @@ class Memory:
                         max_folder = number
             self.id_file = max_folder + 1
 
-    def sample(self, count):
+    def sample(self, count, batch_size):
         """
-        samples a random batch from the replay memory buffer
-        :param count: batch size
-        :return: batch (numpy array)
+        Samples a random batch from the replay memory buffer.
+        :param count: mem_to_sample
+        :param batch_size: batch size
+        :return: generator of batches
         """
         count = min(count, self.length)
-        batch = random.sample(self.buffer, count)
+        indices = random.sample(range(self.length), count)
 
-        s_arr = np.float32([arr[0] for arr in batch])
-        a_arr = np.float32([arr[1] for arr in batch])
-        r_arr = np.float32([arr[2] for arr in batch])
-        s1_arr = np.float32([arr[3] for arr in batch])
+        for i in range(0, count, batch_size):
+            batch_indices = indices[i:i+batch_size]
+            batch = [self.buffer[idx] for idx in batch_indices]
 
-        return s_arr, a_arr, r_arr, s1_arr
+            s_arr = torch.tensor(np.array([arr[0] for arr in batch]), dtype=torch.float32)
+            a_arr = torch.tensor(np.array([arr[1] for arr in batch]), dtype=torch.float32)
+            r_arr = torch.tensor(np.array([arr[2] for arr in batch]), dtype=torch.float32)
+            s1_arr = torch.tensor(np.array([arr[3] for arr in batch]), dtype=torch.float32)
+            done_arr = torch.tensor(np.array([arr[4] for arr in batch]), dtype=torch.int32)
+
+            yield s_arr, a_arr, r_arr, s1_arr, done_arr
 
     def len(self):
         return self.length
@@ -53,17 +60,17 @@ class Memory:
         with open(self.path_logs+filename, "wb") as pkl_f:
             pickle.dump([self.acc_rewards_train, self.acc_rewards_test], pkl_f)
 
-    def add(self, s, a, r, s1, le):
+    def add(self, s, a, r, s1, done, le):
         """
-        adds a particular transaction in the memory buffer
+        Adds a particular transaction in the memory buffer.
         :param s: current state
         :param a: action taken
         :param r: reward received
         :param s1: next state
+        :param done: done flag
         :param le: log episode id (int)
-        :return:
         """
-        transition = (s, a, r, s1, le)
+        transition = (s, a, r, s1, done, le)
         if self.length >= self.maxSize:
             self.length = self.maxSize
         else:
@@ -75,4 +82,3 @@ class Memory:
             self.acc_rewards_test.append(acc_r)
         else:
             self.acc_rewards_train.append(acc_r)
-
