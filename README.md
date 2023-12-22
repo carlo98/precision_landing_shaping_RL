@@ -155,17 +155,3 @@ The author(s) would like to acknowledge the contribution of the student team DRA
 
 The initial code for the DDPG algorithm has been taken from [this](https://github.com/vy007vikas/PyTorch-ActorCriticRL) 
 github repository.
-
-## References <a name="references"></a>
-```
-@article{
-   author = {Alejandro Rodriguez-Ramos and Carlos Sampedro and Hriday Bavle and Paloma de la Puente and Pascual Campoy},
-   doi = {10.1007/s10846-018-0891-8},
-   issn = {15730409},
-   issue = {1-2},
-   journal = {Journal of Intelligent and Robotic Systems: Theory and Applications},
-   title = {A Deep Reinforcement Learning Strategy for UAV Autonomous Landing on a Moving Platform},
-   volume = {93},
-   year = {2019},
-}
-```
